@@ -6,7 +6,6 @@ import {
   History, 
   Cpu, 
   Bell, 
-  Settings, 
   Globe, 
   Search,
   Timer,
@@ -18,19 +17,13 @@ import {
   BookOpen,
   ShieldCheck,
   Activity,
-  RefreshCw,
-  Database,
-  Users,
   Newspaper,
-  ShieldAlert,
-  Info,
   Map,
-  FileText,
   AlertTriangle,
   Facebook,
   Twitter,
-  Send, // Used for Telegram
-  MessageCircle, // Used for WhatsApp
+  Send,
+  MessageCircle,
   Instagram,
   ChevronDown
 } from 'lucide-react';
@@ -43,6 +36,10 @@ import { ShadowButton } from './components/ShadowButton';
 import { UserManual } from './components/UserManual';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NewsSection } from './components/NewsSection';
+import { LogoTicker } from './components/LogoTicker';
+import { NexusLogo } from './components/NexusLogo';
+import { ProviderResultsModal } from './components/ProviderResultsModal';
+import { LotteryProvider, LotteryResult } from './types';
 import { 
   DisclaimerPage, 
   PrivacyPolicy, 
@@ -68,6 +65,7 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [countdown, setCountdown] = useState(240);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [selectedResult, setSelectedResult] = useState<LotteryResult | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -84,6 +82,17 @@ const App: React.FC = () => {
     const mins = Math.floor(sec / 60);
     const secs = sec % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const handleSelectProvider = (providerId: LotteryProvider) => {
+    const result = MOCK_RESULTS.find(r => r.provider === providerId);
+    if (result) {
+      setSelectedResult(result);
+    } else {
+      // Fallback for providers that don't have mock data yet
+      const fallback = MOCK_RESULTS[0];
+      setSelectedResult({ ...fallback, provider: providerId });
+    }
   };
 
   const NavItem = ({ icon: Icon, label, id }: { icon: any, label: string, id: View }) => (
@@ -141,12 +150,16 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white">
+      {/* Result Drill-down Modal */}
+      <ProviderResultsModal 
+        result={selectedResult} 
+        onClose={() => setSelectedResult(null)} 
+        lang={lang} 
+      />
+
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-white/5 sticky top-0 z-50 bg-[#050505]/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-orbitron font-bold">N</div>
-          <span className="font-orbitron font-bold text-lg tracking-tight">4DNEXUS<span className="text-blue-500">PRO</span></span>
-        </div>
+        <NexusLogo size="sm" onClick={() => setActiveView('dashboard')} className="cursor-pointer" />
         <div className="flex items-center gap-2">
           <LanguageSwitcher isMobile />
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-slate-400">
@@ -161,12 +174,8 @@ const App: React.FC = () => {
         transition-transform duration-300 md:translate-x-0 bg-[#050505]
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="hidden md:flex items-center gap-3 cursor-pointer" onClick={() => setActiveView('dashboard')}>
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-orbitron font-bold shadow-lg shadow-blue-500/20">N</div>
-          <div>
-            <span className="font-orbitron font-bold text-xl block tracking-tight">4DNEXUS<span className="text-blue-500">PRO</span></span>
-            <span className="text-[10px] text-slate-500 uppercase font-bold tracking-[0.2em]">Premium Intelligence</span>
-          </div>
+        <div className="hidden md:block">
+          <NexusLogo size="md" onClick={() => setActiveView('dashboard')} className="cursor-pointer" />
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto">
@@ -188,20 +197,6 @@ const App: React.FC = () => {
               <Timer size={14} className="text-blue-400" />
             </div>
             <div className="text-2xl font-orbitron font-bold text-white tabular-nums">{formatTime(countdown)}</div>
-          </div>
-          
-          <div className="flex gap-2 p-1 bg-white/5 rounded-lg">
-            {(['EN', 'CN', 'MY'] as const).map(l => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${
-                  lang === l ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {l}
-              </button>
-            ))}
           </div>
         </div>
       </aside>
@@ -264,6 +259,9 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              {/* Logo Ticker Section */}
+              <LogoTicker onSelectProvider={handleSelectProvider} />
+
               {/* Data Quality Indicators */}
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex gap-4">
@@ -288,7 +286,9 @@ const App: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-1 gap-6">
                     {MOCK_RESULTS.map((res, i) => (
-                      <ResultCard key={i} result={res} lang={lang} />
+                      <div key={i} onClick={() => setSelectedResult(res)} className="cursor-pointer">
+                        <ResultCard result={res} lang={lang} />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -325,7 +325,7 @@ const App: React.FC = () => {
                </h2>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="glass rounded-2xl p-8 border border-white/5">
-                    <h3 className="text-xl font-bold mb-2">Number Frequency Distribution</h3>
+                    <h3 className="text-xl font-bold mb-2 text-white">Number Frequency Distribution</h3>
                     <StatsChart />
                   </div>
                </div>
@@ -360,7 +360,7 @@ const App: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {MOCK_RESULTS.map((row, i) => (
-                      <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={i} className="hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => setSelectedResult(row)}>
                         <td className="p-6 text-sm text-slate-300 font-orbitron">{row.drawDate}</td>
                         <td className="p-6 text-sm font-semibold text-blue-400">{row.provider}</td>
                         <td className="p-6 font-orbitron font-bold text-amber-500">{row.first}</td>
@@ -373,33 +373,20 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* Responsible Gaming & Enhanced SEO Footer */}
+        {/* Footer */}
         <footer className="mt-20 p-8 md:p-12 border-t border-white/5 bg-black/40 text-slate-500">
            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
               <div className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-slate-600 rounded flex items-center justify-center font-orbitron font-bold text-xs text-white">N</div>
-                  <span className="font-orbitron font-bold tracking-tight text-slate-200">4DNEXUS<span className="text-blue-500">PRO</span></span>
-                </div>
+                <NexusLogo size="sm" />
                 <p className="text-xs leading-relaxed max-w-xs">
                   The world's premier 4D lottery data aggregation platform. Powered by the Nexus Engine for real-time synchronization and pattern analysis.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-4">
-                  <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600/20 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-pointer transition-all" aria-label="Facebook">
-                    <Facebook size={18} />
-                  </a>
-                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-400/20 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] cursor-pointer transition-all" aria-label="X (Twitter)">
-                    <Twitter size={18} />
-                  </a>
-                  <a href="https://telegram.org" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-500/20 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-pointer transition-all" aria-label="Telegram">
-                    <Send size={18} />
-                  </a>
-                  <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-green-600/20 hover:text-green-400 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] cursor-pointer transition-all" aria-label="WhatsApp">
-                    <MessageCircle size={18} />
-                  </a>
-                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-pink-600/20 hover:text-pink-400 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer transition-all" aria-label="Instagram">
-                    <Instagram size={18} />
-                  </a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600/20 hover:text-blue-400 transition-all"><Facebook size={18} /></a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-400/20 hover:text-blue-400 transition-all"><Twitter size={18} /></a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-500/20 hover:text-blue-400 transition-all"><Send size={18} /></a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-green-600/20 hover:text-green-400 transition-all"><MessageCircle size={18} /></a>
+                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-pink-600/20 hover:text-pink-400 transition-all"><Instagram size={18} /></a>
                 </div>
               </div>
 
@@ -441,7 +428,7 @@ const App: React.FC = () => {
            <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-medium uppercase tracking-[0.2em]">
               <p>© 2024 4D NEXUS PRO INTELLIGENCE. ALL RIGHTS RESERVED.</p>
               <div className="flex gap-8">
-                <span>Optimized for Google, Bing, Yandex</span>
+                <span>Optimized for Search Engines</span>
                 <span className="text-green-500">SSL ENCRYPTED</span>
               </div>
            </div>

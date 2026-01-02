@@ -141,6 +141,15 @@
         .nexus-line-amber::after {
             background: linear-gradient(to bottom, transparent, #f59e0b, transparent);
         }
+
+        /* Marquee Animation */
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-scroll {
+          animation: scroll 40s linear infinite;
+        }
     </style>
 <script type="importmap">
 {
