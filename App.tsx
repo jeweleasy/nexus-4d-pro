@@ -21,7 +21,17 @@ import {
   RefreshCw,
   Database,
   Users,
-  Newspaper
+  Newspaper,
+  ShieldAlert,
+  Info,
+  Map,
+  FileText,
+  AlertTriangle,
+  Facebook,
+  Twitter,
+  Send, // Used for Telegram
+  MessageCircle, // Used for WhatsApp
+  Instagram
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -31,8 +41,16 @@ import { ShadowButton } from './components/ShadowButton';
 import { UserManual } from './components/UserManual';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NewsSection } from './components/NewsSection';
+import { 
+  DisclaimerPage, 
+  PrivacyPolicy, 
+  AboutUs, 
+  ContactUs, 
+  Sitemap, 
+  TermsConditions 
+} from './components/LegalPages';
 
-type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'premium' | 'manual' | 'admin';
+type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'premium' | 'manual' | 'admin' | 'disclaimer' | 'privacy' | 'about' | 'contact' | 'sitemap' | 'terms';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -46,6 +64,11 @@ const App: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Scroll to top on view change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeView]);
 
   const formatTime = (sec: number) => {
     const mins = Math.floor(sec / 60);
@@ -176,7 +199,7 @@ const App: React.FC = () => {
               <div className="relative h-48 md:h-64 rounded-3xl overflow-hidden group">
                 <img 
                   src="https://picsum.photos/seed/cyberpunk/1200/400" 
-                  alt="Banner" 
+                  alt="4D Nexus Intelligence Banner" 
                   className="w-full h-full object-cover brightness-50 group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent p-8 md:p-12 flex flex-col justify-center">
@@ -184,15 +207,15 @@ const App: React.FC = () => {
                   <h1 className="text-3xl md:text-5xl font-orbitron font-bold mb-4 leading-tight">THE NEXUS<br/>JACKPOT PULSE</h1>
                   <p className="text-slate-300 max-w-lg text-sm md:text-base hidden md:block">Real-time aggregation engine synchronizing with 10+ global sources every 300 seconds.</p>
                   <div className="mt-6 flex gap-4">
-                    <ShadowButton variant="gold">Check Live Jackpot</ShadowButton>
-                    <button className="text-white font-semibold flex items-center gap-2 hover:gap-3 transition-all" onClick={() => setActiveView('manual')}>
+                    <ShadowButton variant="gold" onClick={() => setActiveView('stats')}>Check Live Jackpot</ShadowButton>
+                    <button className="text-white font-semibold flex items-center gap-2 hover:gap-3 transition-all" onClick={() => setActiveView('about')}>
                       Learn More <ChevronRight size={18} />
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Data Quality & Source Indicators */}
+              {/* Data Quality Indicators */}
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex gap-4">
                   <div className="flex items-center gap-2 text-xs">
@@ -204,13 +227,8 @@ const App: React.FC = () => {
                     <span className="text-slate-400">Aggregator Engine: Active</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
-                  <span>LATENCY: 42ms</span>
-                  <span>ACCURACY: 99.9%</span>
-                </div>
               </div>
 
-              {/* Grid Content */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                   <div className="flex items-center justify-between">
@@ -218,12 +236,7 @@ const App: React.FC = () => {
                       <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
                       Latest Results
                     </h2>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs hover:bg-white/10 transition-colors">Yesterday</button>
-                      <button className="px-3 py-1 rounded-full bg-blue-600/20 border border-blue-500/30 text-xs text-blue-400">Today</button>
-                    </div>
                   </div>
-
                   <div className="grid grid-cols-1 gap-6">
                     {MOCK_RESULTS.map((res, i) => (
                       <ResultCard key={i} result={res} lang={lang} />
@@ -243,15 +256,11 @@ const App: React.FC = () => {
                         <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
                           <span className="text-xl font-orbitron font-bold text-white tracking-widest">{n.number}</span>
                           <div className="text-right">
-                            <span className="text-[10px] text-slate-500 block uppercase">Hits (6mo)</span>
                             <span className="text-sm font-bold text-amber-500">{n.frequency}x</span>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <ShadowButton variant="secondary" className="w-full mt-4 text-xs" onClick={() => setActiveView('stats')}>
-                      Full Analytics
-                    </ShadowButton>
                   </div>
                 </div>
               </div>
@@ -264,40 +273,22 @@ const App: React.FC = () => {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="glass rounded-2xl p-8">
                     <h3 className="text-xl font-bold mb-2">Number Frequency Distribution</h3>
-                    <p className="text-slate-400 text-sm mb-6">Aggregate hit count over the last 180 days across all major platforms.</p>
                     <StatsChart />
-                  </div>
-                  <div className="glass rounded-2xl p-8 space-y-6">
-                    <h3 className="text-xl font-bold mb-4">Market Sentiment</h3>
-                    <div className="space-y-6">
-                       {['Magnum', 'Toto', 'Da Ma Cai'].map((m, i) => (
-                         <div key={i} className="space-y-2">
-                           <div className="flex justify-between text-sm">
-                             <span className="text-slate-300">{m} 4D Stability</span>
-                             <span className="text-blue-400 font-bold">8{i} %</span>
-                           </div>
-                           <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                             <div className="h-full bg-blue-600 rounded-full transition-all duration-1000" style={{ width: `${80 + i * 5}%` }}></div>
-                           </div>
-                         </div>
-                       ))}
-                    </div>
                   </div>
                </div>
             </div>
           )}
 
-          {activeView === 'predictions' && (
-             <div className="max-w-4xl mx-auto space-y-8 animate-in zoom-in duration-500">
-                <div className="text-center space-y-4 py-8">
-                   <h2 className="text-4xl font-orbitron font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Nexus Intelligence Engine</h2>
-                   <p className="text-slate-400">Advanced ML models trained on 20 years of historical 4D data.</p>
-                </div>
-                <Predictor />
-             </div>
-          )}
-
+          {activeView === 'predictions' && <div className="max-w-4xl mx-auto"><Predictor /></div>}
           {activeView === 'news' && <NewsSection />}
+          {activeView === 'manual' && <UserManual />}
+          {activeView === 'admin' && <AdminDashboard />}
+          {activeView === 'disclaimer' && <DisclaimerPage />}
+          {activeView === 'privacy' && <PrivacyPolicy />}
+          {activeView === 'about' && <AboutUs />}
+          {activeView === 'contact' && <ContactUs />}
+          {activeView === 'sitemap' && <Sitemap onNavigate={setActiveView} />}
+          {activeView === 'terms' && <TermsConditions />}
 
           {activeView === 'archive' && (
             <div className="space-y-6">
@@ -308,21 +299,15 @@ const App: React.FC = () => {
                     <tr className="bg-white/5 text-slate-400 text-xs uppercase tracking-widest font-bold">
                       <th className="p-6">Date</th>
                       <th className="p-6">Provider</th>
-                      <th className="p-6">Draw ID</th>
                       <th className="p-6">1st Prize</th>
-                      <th className="p-6">2nd Prize</th>
-                      <th className="p-6">3rd Prize</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {[...MOCK_RESULTS, ...MOCK_RESULTS].map((row, i) => (
-                      <tr key={i} className="hover:bg-white/[0.02] transition-colors cursor-pointer group">
+                    {MOCK_RESULTS.map((row, i) => (
+                      <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                         <td className="p-6 text-sm text-slate-300 font-orbitron">{row.drawDate}</td>
                         <td className="p-6 text-sm font-semibold text-blue-400">{row.provider}</td>
-                        <td className="p-6 text-sm text-slate-500">{row.drawNumber}</td>
-                        <td className="p-6 font-orbitron font-bold text-amber-500 group-hover:scale-110 transition-transform origin-left">{row.first}</td>
-                        <td className="p-6 font-orbitron text-slate-300">{row.second}</td>
-                        <td className="p-6 font-orbitron text-slate-300">{row.third}</td>
+                        <td className="p-6 font-orbitron font-bold text-amber-500">{row.first}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -330,60 +315,78 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
-
-          {activeView === 'manual' && <UserManual />}
-          {activeView === 'admin' && <AdminDashboard />}
-          {activeView === 'premium' && (
-            <div className="max-w-3xl mx-auto space-y-12 py-12 text-center">
-              <div className="space-y-4">
-                <h2 className="text-5xl font-orbitron font-bold">Nexus Premium</h2>
-                <p className="text-slate-400 text-lg">Unlock the full power of real-time 4D intelligence.</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="glass p-8 rounded-3xl border border-white/5 space-y-6">
-                  <h3 className="text-2xl font-bold">Free Tier</h3>
-                  <div className="text-4xl font-orbitron font-bold">$0<span className="text-sm text-slate-500 font-normal">/mo</span></div>
-                  <ul className="text-slate-400 text-left space-y-4">
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Real-time results</li>
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Basic frequency stats</li>
-                  </ul>
-                  <button className="w-full py-3 rounded-xl border border-white/10 text-slate-400 cursor-default">Current Plan</button>
-                </div>
-
-                <div className="glass p-8 rounded-3xl border border-blue-500/30 bg-blue-600/5 space-y-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-4 py-1 rounded-bl-xl uppercase tracking-widest">Most Popular</div>
-                  <h3 className="text-2xl font-bold text-blue-400">Pro Tier</h3>
-                  <div className="text-4xl font-orbitron font-bold">$19<span className="text-sm text-slate-500 font-normal">/mo</span></div>
-                  <ShadowButton variant="primary" className="w-full py-3">Upgrade to Pro</ShadowButton>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Responsible Gaming Footer */}
-        <footer className="mt-20 p-8 border-t border-white/5 bg-black/40 text-slate-500">
-           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 opacity-50">
-                  <div className="w-6 h-6 bg-slate-600 rounded flex items-center justify-center font-orbitron font-bold text-xs">N</div>
-                  <span className="font-orbitron font-bold tracking-tight">4DNEXUS<span className="text-slate-500">PRO</span></span>
+        {/* Responsible Gaming & Enhanced SEO Footer */}
+        <footer className="mt-20 p-8 md:p-12 border-t border-white/5 bg-black/40 text-slate-500">
+           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-slate-600 rounded flex items-center justify-center font-orbitron font-bold text-xs text-white">N</div>
+                  <span className="font-orbitron font-bold tracking-tight text-slate-200">4DNEXUS<span className="text-blue-500">PRO</span></span>
                 </div>
-                <p className="text-xs leading-relaxed">
-                  4D Nexus Pro is a data intelligence platform and not a gambling site. 
+                <p className="text-xs leading-relaxed max-w-xs">
+                  The world's premier 4D lottery data aggregation platform. Powered by the Nexus Engine for real-time synchronization and pattern analysis.
                 </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Resources</h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <a href="#" className="hover:text-blue-400 transition-colors">Privacy Policy</a>
-                  <a href="#" className="hover:text-blue-400 transition-colors" onClick={() => setActiveView('manual')}>User Manual</a>
+                <div className="flex flex-wrap gap-3 pt-4">
+                  <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-600/20 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-pointer transition-all" aria-label="Facebook">
+                    <Facebook size={18} />
+                  </a>
+                  <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-400/20 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] cursor-pointer transition-all" aria-label="X (Twitter)">
+                    <Twitter size={18} />
+                  </a>
+                  <a href="https://telegram.org" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-500/20 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] cursor-pointer transition-all" aria-label="Telegram">
+                    <Send size={18} />
+                  </a>
+                  <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-green-600/20 hover:text-green-400 hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] cursor-pointer transition-all" aria-label="WhatsApp">
+                    <MessageCircle size={18} />
+                  </a>
+                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-pink-600/20 hover:text-pink-400 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] cursor-pointer transition-all" aria-label="Instagram">
+                    <Instagram size={18} />
+                  </a>
                 </div>
               </div>
-              <div className="p-4 rounded-xl border border-white/5 bg-white/5">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Responsible Gaming</h4>
-                <p className="text-[10px] leading-relaxed mb-3">Lottery is for adults 18+. Play only what you can afford to lose.</p>
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-200">Quick Navigation</h4>
+                <ul className="space-y-2 text-xs">
+                  <li><button onClick={() => setActiveView('dashboard')} className="hover:text-blue-400 transition-colors">Live 4D Dashboard</button></li>
+                  <li><button onClick={() => setActiveView('stats')} className="hover:text-blue-400 transition-colors">Number Analytics</button></li>
+                  <li><button onClick={() => setActiveView('predictions')} className="hover:text-blue-400 transition-colors">AI Predictions</button></li>
+                  <li><button onClick={() => setActiveView('news')} className="hover:text-blue-400 transition-colors">Industry Reports</button></li>
+                  <li><button onClick={() => setActiveView('sitemap')} className="hover:text-blue-400 transition-colors flex items-center gap-2"><Map size={12} /> Full Sitemap</button></li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-200">Legal Intelligence</h4>
+                <ul className="space-y-2 text-xs">
+                  <li><button onClick={() => setActiveView('disclaimer')} className="hover:text-blue-400 transition-colors flex items-center gap-2"><AlertTriangle size={12} /> Legal Disclaimer</button></li>
+                  <li><button onClick={() => setActiveView('privacy')} className="hover:text-blue-400 transition-colors">Privacy & Data Security</button></li>
+                  <li><button onClick={() => setActiveView('terms')} className="hover:text-blue-400 transition-colors">Terms of Service</button></li>
+                  <li><button onClick={() => setActiveView('about')} className="hover:text-blue-400 transition-colors">Our Mission</button></li>
+                  <li><button onClick={() => setActiveView('contact')} className="hover:text-blue-400 transition-colors">Contact Intelligence</button></li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-6 rounded-2xl border border-white/5 bg-white/5 space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-amber-500">Responsible Gaming</h4>
+                  <p className="text-[10px] leading-relaxed">
+                    Lottery data analysis is for informational purposes only. Play responsibly. Adults 18+ only.
+                  </p>
+                  <ShadowButton variant="secondary" className="w-full text-[10px] py-1" onClick={() => setActiveView('contact')}>
+                    Get Help
+                  </ShadowButton>
+                </div>
+              </div>
+           </div>
+           
+           <div className="max-w-7xl mx-auto pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-medium uppercase tracking-[0.2em]">
+              <p>© 2024 4D NEXUS PRO INTELLIGENCE. ALL RIGHTS RESERVED.</p>
+              <div className="flex gap-8">
+                <span>Optimized for Google, Bing, Yandex</span>
+                <span className="text-green-500">SSL ENCRYPTED</span>
               </div>
            </div>
         </footer>
