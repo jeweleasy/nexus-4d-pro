@@ -14,15 +14,25 @@ import {
   Menu,
   X,
   CreditCard,
-  ChevronRight
+  ChevronRight,
+  BookOpen,
+  ShieldCheck,
+  Activity,
+  RefreshCw,
+  Database,
+  Users,
+  Newspaper
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
 import { StatsChart } from './components/StatsChart';
 import { Predictor } from './components/Predictor';
 import { ShadowButton } from './components/ShadowButton';
+import { UserManual } from './components/UserManual';
+import { AdminDashboard } from './components/AdminDashboard';
+import { NewsSection } from './components/NewsSection';
 
-type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'premium';
+type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'premium' | 'manual' | 'admin';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -80,7 +90,7 @@ const App: React.FC = () => {
         transition-transform duration-300 md:translate-x-0 bg-[#050505]
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3 cursor-pointer" onClick={() => setActiveView('dashboard')}>
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-orbitron font-bold shadow-lg shadow-blue-500/20">N</div>
           <div>
             <span className="font-orbitron font-bold text-xl block tracking-tight">4DNEXUS<span className="text-blue-500">PRO</span></span>
@@ -88,12 +98,15 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto">
           <NavItem icon={LayoutDashboard} label={LANGUAGES[lang].dashboard} id="dashboard" />
           <NavItem icon={BarChart3} label={LANGUAGES[lang].stats} id="stats" />
           <NavItem icon={History} label={LANGUAGES[lang].archive} id="archive" />
           <NavItem icon={Cpu} label={LANGUAGES[lang].predictions} id="predictions" />
+          <NavItem icon={Newspaper} label={LANGUAGES[lang].news} id="news" />
+          <NavItem icon={BookOpen} label="User Manual" id="manual" />
           <div className="my-6 border-t border-white/5"></div>
+          <NavItem icon={ShieldCheck} label="Admin Portal" id="admin" />
           <NavItem icon={CreditCard} label="Nexus Premium" id="premium" />
         </nav>
 
@@ -148,10 +161,10 @@ const App: React.FC = () => {
             <div className="h-8 w-[1px] bg-white/5"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right">
-                <p className="text-sm font-semibold">Alex Premium</p>
-                <p className="text-[10px] text-blue-400 uppercase font-bold tracking-tighter">Gold Tier User</p>
+                <p className="text-sm font-semibold">Admin User</p>
+                <p className="text-[10px] text-red-400 uppercase font-bold tracking-tighter">System Administrator</p>
               </div>
-              <img src="https://picsum.photos/seed/alex/40/40" alt="Profile" className="w-10 h-10 rounded-full border border-white/20" />
+              <img src="https://picsum.photos/seed/admin/40/40" alt="Profile" className="w-10 h-10 rounded-full border border-red-500/20 ring-2 ring-red-500/10" />
             </div>
           </div>
         </header>
@@ -172,7 +185,7 @@ const App: React.FC = () => {
                   <p className="text-slate-300 max-w-lg text-sm md:text-base hidden md:block">Real-time aggregation engine synchronizing with 10+ global sources every 300 seconds.</p>
                   <div className="mt-6 flex gap-4">
                     <ShadowButton variant="gold">Check Live Jackpot</ShadowButton>
-                    <button className="text-white font-semibold flex items-center gap-2 hover:gap-3 transition-all">
+                    <button className="text-white font-semibold flex items-center gap-2 hover:gap-3 transition-all" onClick={() => setActiveView('manual')}>
                       Learn More <ChevronRight size={18} />
                     </button>
                   </div>
@@ -219,10 +232,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-8">
-                  {/* ML Predictor Sidebar Widget */}
                   <Predictor />
-
-                  {/* Frequency Mini Widget */}
                   <div className="glass rounded-2xl p-6">
                     <h3 className="text-lg font-orbitron font-bold mb-4 flex items-center gap-2">
                       <BarChart3 size={20} className="text-amber-500" />
@@ -272,9 +282,6 @@ const App: React.FC = () => {
                          </div>
                        ))}
                     </div>
-                    <div className="pt-4 p-4 rounded-xl bg-blue-600/5 border border-blue-500/10 text-sm text-blue-200 leading-relaxed">
-                       Our data prioritization engine currently ranks Magnum as the most consistent source for sub-second updates, followed closely by Singapore Pools.
-                    </div>
                   </div>
                </div>
             </div>
@@ -284,11 +291,13 @@ const App: React.FC = () => {
              <div className="max-w-4xl mx-auto space-y-8 animate-in zoom-in duration-500">
                 <div className="text-center space-y-4 py-8">
                    <h2 className="text-4xl font-orbitron font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Nexus Intelligence Engine</h2>
-                   <p className="text-slate-400">Advanced ML models trained on 20 years of historical 4D data from multiple regions.</p>
+                   <p className="text-slate-400">Advanced ML models trained on 20 years of historical 4D data.</p>
                 </div>
                 <Predictor />
              </div>
           )}
+
+          {activeView === 'news' && <NewsSection />}
 
           {activeView === 'archive' && (
             <div className="space-y-6">
@@ -322,6 +331,8 @@ const App: React.FC = () => {
             </div>
           )}
 
+          {activeView === 'manual' && <UserManual />}
+          {activeView === 'admin' && <AdminDashboard />}
           {activeView === 'premium' && (
             <div className="max-w-3xl mx-auto space-y-12 py-12 text-center">
               <div className="space-y-4">
@@ -336,9 +347,6 @@ const App: React.FC = () => {
                   <ul className="text-slate-400 text-left space-y-4">
                     <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Real-time results</li>
                     <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Basic frequency stats</li>
-                    <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Archive access (1 mo)</li>
-                    <li className="flex items-center gap-2 text-slate-600 opacity-50"><X size={14}/> Ad-free experience</li>
-                    <li className="flex items-center gap-2 text-slate-600 opacity-50"><X size={14}/> API Data Access</li>
                   </ul>
                   <button className="w-full py-3 rounded-xl border border-white/10 text-slate-400 cursor-default">Current Plan</button>
                 </div>
@@ -347,13 +355,6 @@ const App: React.FC = () => {
                   <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-4 py-1 rounded-bl-xl uppercase tracking-widest">Most Popular</div>
                   <h3 className="text-2xl font-bold text-blue-400">Pro Tier</h3>
                   <div className="text-4xl font-orbitron font-bold">$19<span className="text-sm text-slate-500 font-normal">/mo</span></div>
-                  <ul className="text-slate-400 text-left space-y-4">
-                    <li className="flex items-center gap-2 text-blue-200"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Everything in Free</li>
-                    <li className="flex items-center gap-2 text-blue-200"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Advanced ML Predictions</li>
-                    <li className="flex items-center gap-2 text-blue-200"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Unlimited Archive History</li>
-                    <li className="flex items-center gap-2 text-blue-200"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Ad-free Experience</li>
-                    <li className="flex items-center gap-2 text-blue-200"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Custom Alerts & SMS</li>
-                  </ul>
                   <ShadowButton variant="primary" className="w-full py-3">Upgrade to Pro</ShadowButton>
                 </div>
               </div>
@@ -370,29 +371,20 @@ const App: React.FC = () => {
                   <span className="font-orbitron font-bold tracking-tight">4DNEXUS<span className="text-slate-500">PRO</span></span>
                 </div>
                 <p className="text-xs leading-relaxed">
-                  4D Nexus Pro is a data intelligence platform and not a gambling site. We provide aggregated information for educational and entertainment purposes only.
+                  4D Nexus Pro is a data intelligence platform and not a gambling site. 
                 </p>
               </div>
               <div className="space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Resources</h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <a href="#" className="hover:text-blue-400 transition-colors">Privacy Policy</a>
-                  <a href="#" className="hover:text-blue-400 transition-colors">Terms of Use</a>
-                  <a href="#" className="hover:text-blue-400 transition-colors">API Docs</a>
-                  <a href="#" className="hover:text-blue-400 transition-colors">Contact Support</a>
+                  <a href="#" className="hover:text-blue-400 transition-colors" onClick={() => setActiveView('manual')}>User Manual</a>
                 </div>
               </div>
               <div className="p-4 rounded-xl border border-white/5 bg-white/5">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Responsible Gaming</h4>
-                <p className="text-[10px] leading-relaxed mb-3">Lottery is for adults 18+. Play only what you can afford to lose. If you need help, please contact local support lines.</p>
-                <div className="flex gap-4">
-                  <span className="px-2 py-0.5 border border-slate-700 rounded text-[9px]">18+ ONLY</span>
-                  <span className="px-2 py-0.5 border border-slate-700 rounded text-[9px]">BE GAMBLE AWARE</span>
-                </div>
+                <p className="text-[10px] leading-relaxed mb-3">Lottery is for adults 18+. Play only what you can afford to lose.</p>
               </div>
-           </div>
-           <div className="text-center text-[10px] uppercase tracking-[0.2em] opacity-30">
-             © 2024 Nexus Intelligence Systems. Global Data Center.
            </div>
         </footer>
       </main>

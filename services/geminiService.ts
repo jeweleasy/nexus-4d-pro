@@ -8,6 +8,50 @@ export class PredictionService {
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   }
 
+  async getNewsAggregated() {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Act as a senior lottery market journalist. Generate 4 high-quality, realistic lottery-related news articles based on current market trends.
+                   Each news item MUST include:
+                   - Headline: Professional and engaging
+                   - Summary: 2-3 detailed sentences
+                   - Paper Name: A reputable regional newspaper
+                   - Page Number: Specific page (e.g., B4, A12)
+                   - Category: One of [Market, Regulatory, Jackpot, Analysis]
+                   
+                   Format as JSON with a 'news' array.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              news: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    headline: { type: Type.STRING },
+                    summary: { type: Type.STRING },
+                    paperName: { type: Type.STRING },
+                    pageNumber: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    date: { type: Type.STRING }
+                  },
+                  required: ['headline', 'summary', 'paperName', 'pageNumber', 'category', 'date']
+                }
+              }
+            }
+          }
+        }
+      });
+      return JSON.parse(response.text || '{"news": []}');
+    } catch (error) {
+      console.error("News aggregation failed:", error);
+      return null;
+    }
+  }
+
   async getPredictions(historicalData: string) {
     try {
       const response = await this.ai.models.generateContent({

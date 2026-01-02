@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LotteryProvider, LotteryResult, StatisticalData } from './types';
+import { LotteryProvider, LotteryResult, StatisticalData, LotteryNews } from './types';
 
 export const MOCK_RESULTS: LotteryResult[] = [
   {
@@ -49,6 +49,36 @@ export const HOT_NUMBERS: StatisticalData[] = [
   { number: '7721', frequency: 2, lastDrawn: '2024-01-15', gap: 120, status: 'cold' },
 ];
 
+export const MOCK_NEWS: LotteryNews[] = [
+  {
+    id: '1',
+    headline: 'Supreme Toto 6/58 Jackpot Hits Record RM 97 Million',
+    summary: 'A lucky punter from Kuala Lumpur has claimed the largest single jackpot prize in Malaysian history. The winning ticket was purchased at a suburban outlet, marking a massive surge in local participation for the upcoming weekend draws.',
+    paperName: 'The Star Business',
+    pageNumber: 'B12',
+    date: '2024-05-20',
+    category: 'Jackpot'
+  },
+  {
+    id: '2',
+    headline: 'Digitalization of Traditional 4D Outlets Sees 30% Growth',
+    summary: 'The shift towards mobile-integrated verification systems has revitalized the traditional lottery sector. Industry analysts predict a complete transition to paperless auditing by 2026, improving data transparency across all major providers.',
+    paperName: 'Malay Mail',
+    pageNumber: 'P04',
+    date: '2024-05-18',
+    category: 'Market'
+  },
+  {
+    id: '3',
+    headline: 'New Compliance Standards for Lottery Operators Announced',
+    summary: 'The regulatory body has introduced stricter anti-money laundering protocols for high-value prize claims. Operators now require biometric verification for any payouts exceeding RM 100,000 to ensure financial integrity.',
+    paperName: 'The Edge Weekly',
+    pageNumber: 'A08',
+    date: '2024-05-15',
+    category: 'Regulatory'
+  }
+];
+
 export const LANGUAGES = {
   EN: {
     title: '4D Nexus Pro',
@@ -56,6 +86,7 @@ export const LANGUAGES = {
     stats: 'Statistics',
     archive: 'Archive',
     predictions: 'ML Predictions',
+    news: 'Industry News',
     live: 'Live Draw',
     prizes: {
       first: '1st Prize',
@@ -71,6 +102,7 @@ export const LANGUAGES = {
     stats: '统计数据',
     archive: '历史查询',
     predictions: 'AI 预测',
+    news: '行业新闻',
     live: '即时开彩',
     prizes: {
       first: '头奖',
@@ -86,6 +118,7 @@ export const LANGUAGES = {
     stats: 'Statistik',
     archive: 'Arkib',
     predictions: 'Ramalan AI',
+    news: 'Berita Industri',
     live: 'Cabutan Langsung',
     prizes: {
       first: 'Hadiah Pertama',

@@ -42,3 +42,13 @@ export interface PredictionResult {
   probability: number;
   reasoning: string;
 }
+
+export interface LotteryNews {
+  id: string;
+  headline: string;
+  summary: string;
+  paperName: string;
+  pageNumber: string;
+  date: string;
+  category: 'Market' | 'Regulatory' | 'Jackpot' | 'Analysis';
+}
