@@ -6,7 +6,15 @@ export enum LotteryProvider {
   SINGAPORE = 'Singapore 4D',
   SABAH88 = 'Sabah 88 4D',
   STC = 'STC 4D',
-  SWEEP = 'Special CashSweep'
+  SWEEP = 'Special CashSweep',
+  GDLOTTO = 'GD Lotto',
+  LUCKYHARIHARI = 'Lucky Hari Hari',
+  KINGDOM4D = 'Kingdom 4D',
+  PERDANA4D = 'Perdana 4D',
+  DRAGON4D = 'Dragon 4D',
+  NEWWIN4D = 'NewWin 4D',
+  PMP4D = 'PMP 4D',
+  LUCKY4D = 'Lucky 4D'
 }
 
 export interface LotteryResult {
@@ -30,17 +38,15 @@ export interface StatisticalData {
   status: 'hot' | 'cold' | 'neutral';
 }
 
-export interface UserPreferences {
-  language: 'EN' | 'CN' | 'MY';
-  darkMode: boolean;
-  favorites: string[];
-  currency: string;
-}
-
 export interface PredictionResult {
   number: string;
   probability: number;
   reasoning: string;
+}
+
+export interface LuckyNumberResult {
+  number: string;
+  fortune: string;
 }
 
 export interface LotteryNews {

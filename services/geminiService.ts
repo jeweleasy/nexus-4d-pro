@@ -8,6 +8,32 @@ export class PredictionService {
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   }
 
+  async generateLuckyNumber() {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Act as a high-tech 4D Numerology Oracle. Based on current universal entropy and digital resonance (Time: ${new Date().toISOString()}), generate exactly one lucky 4-digit number.
+                   Also provide a one-sentence "Cosmic Rationale" (fortune) why this number is special right now. 
+                   Format as JSON with 'number' (string) and 'fortune' (string).`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              number: { type: Type.STRING },
+              fortune: { type: Type.STRING }
+            },
+            required: ['number', 'fortune']
+          }
+        }
+      });
+      return JSON.parse(response.text || '{"number": "8888", "fortune": "The digital winds favor the consistent."}');
+    } catch (error) {
+      console.error("Lucky number generation failed:", error);
+      return { number: "????", fortune: "Connection to Nexus Core unstable. Try again." };
+    }
+  }
+
   async getNewsAggregated() {
     try {
       const response = await this.ai.models.generateContent({
@@ -56,7 +82,6 @@ export class PredictionService {
 
   async generateNewsVisual(prompt: string) {
     try {
-      // Create a fresh instance to ensure correct API key usage
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',

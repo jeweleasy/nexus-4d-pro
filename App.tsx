@@ -38,6 +38,7 @@ import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
 import { StatsChart } from './components/StatsChart';
 import { Predictor } from './components/Predictor';
+import { LuckyNumber } from './components/LuckyNumber';
 import { ShadowButton } from './components/ShadowButton';
 import { UserManual } from './components/UserManual';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -55,7 +56,6 @@ type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'premiu
 type LangCode = 'EN' | 'CN' | 'MY';
 
 const App: React.FC = () => {
-  // Detect language based on browser/device settings
   const detectLanguage = (): LangCode => {
     const browserLang = navigator.language.toLowerCase();
     if (browserLang.includes('zh')) return 'CN';
@@ -66,7 +66,7 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [lang, setLang] = useState<LangCode>(detectLanguage());
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [countdown, setCountdown] = useState(240); // 4 minutes until next draw update
+  const [countdown, setCountdown] = useState(240);
   const [showLangMenu, setShowLangMenu] = useState(false);
 
   useEffect(() => {
@@ -76,7 +76,6 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Scroll to top on view change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [activeView]);
@@ -295,6 +294,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-8">
+                  <LuckyNumber />
                   <Predictor />
                   <div className="glass rounded-2xl p-6 border border-white/5">
                     <h3 className="text-lg font-orbitron font-bold mb-4 flex items-center gap-3">
