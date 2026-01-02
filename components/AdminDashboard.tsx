@@ -28,7 +28,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3">
-            <ShieldAlert className="text-red-500" />
+            <div className="nexus-line nexus-line-purple"></div>
             Admin Command Center
           </h2>
           <p className="text-slate-400 text-sm mt-1">System Health & Data Source Orchestration</p>
@@ -46,7 +46,7 @@ export const AdminDashboard: React.FC = () => {
           { label: 'ML Process Load', value: '12%', icon: Cpu, color: 'text-purple-400' },
           { label: 'Storage Used', value: '852GB', icon: HardDrive, color: 'text-amber-400' },
         ].map((stat, i) => (
-          <div key={i} className="glass p-6 rounded-2xl flex items-center justify-between border-l-4 border-l-transparent hover:border-l-blue-500 transition-all">
+          <div key={i} className="glass p-6 rounded-2xl flex items-center justify-between border-l-4 border-l-transparent hover:border-l-blue-500 transition-all border border-white/5">
             <div>
               <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">{stat.label}</p>
               <p className="text-2xl font-orbitron font-bold mt-1">{stat.value}</p>
@@ -57,7 +57,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 glass rounded-2xl p-6 flex flex-col h-[400px]">
+        <div className="lg:col-span-2 glass rounded-2xl p-6 flex flex-col h-[400px] border border-white/5">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <Terminal size={20} className="text-blue-400" />
@@ -78,7 +78,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6 space-y-6">
+        <div className="glass rounded-2xl p-6 space-y-6 border border-white/5">
           <h3 className="text-lg font-bold flex items-center gap-2">
             <Database size={20} className="text-amber-500" />
             Primary Aggregators

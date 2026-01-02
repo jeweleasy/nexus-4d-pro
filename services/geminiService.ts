@@ -19,6 +19,7 @@ export class PredictionService {
                    - Paper Name: A reputable regional newspaper
                    - Page Number: Specific page (e.g., B4, A12)
                    - Category: One of [Market, Regulatory, Jackpot, Analysis]
+                   - imagePrompt: A detailed prompt for an AI to generate a professional, abstract, high-tech lottery-related image. No people, focus on data, lighting, and symbolism.
                    
                    Format as JSON with a 'news' array.`,
         config: {
@@ -36,9 +37,10 @@ export class PredictionService {
                     paperName: { type: Type.STRING },
                     pageNumber: { type: Type.STRING },
                     category: { type: Type.STRING },
-                    date: { type: Type.STRING }
+                    date: { type: Type.STRING },
+                    imagePrompt: { type: Type.STRING }
                   },
-                  required: ['headline', 'summary', 'paperName', 'pageNumber', 'category', 'date']
+                  required: ['headline', 'summary', 'paperName', 'pageNumber', 'category', 'date', 'imagePrompt']
                 }
               }
             }
@@ -49,6 +51,34 @@ export class PredictionService {
     } catch (error) {
       console.error("News aggregation failed:", error);
       return null;
+    }
+  }
+
+  async generateNewsVisual(prompt: string) {
+    try {
+      // Create a fresh instance to ensure correct API key usage
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: {
+          parts: [{ text: `Professional corporate visualization: ${prompt}. Cinematic lighting, 8k resolution, tech aesthetic, no human faces, strictly abstract data/business theme.` }]
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: "16:9"
+          }
+        }
+      });
+
+      for (const part of response.candidates?.[0]?.content?.parts || []) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Image generation failed:", error);
+      return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/450`;
     }
   }
 

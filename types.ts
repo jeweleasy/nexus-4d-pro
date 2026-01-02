@@ -51,4 +51,6 @@ export interface LotteryNews {
   pageNumber: string;
   date: string;
   category: 'Market' | 'Regulatory' | 'Jackpot' | 'Analysis';
+  imagePrompt?: string;
+  imageUrl?: string;
 }

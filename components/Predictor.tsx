@@ -20,10 +20,11 @@ export const Predictor: React.FC = () => {
   }, []);
 
   return (
-    <div className="glass rounded-2xl p-6 overflow-hidden">
+    <div className="glass rounded-2xl p-6 overflow-hidden border border-white/5">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-orbitron font-bold text-white flex items-center gap-2">
-          <span className="text-purple-400">✧</span> ML Predictions
+        <h3 className="text-xl font-orbitron font-bold text-white flex items-center gap-3">
+          <div className="nexus-line nexus-line-purple"></div>
+          ML Predictions
         </h3>
         <ShadowButton onClick={fetchPredictions} variant="secondary" className="text-xs py-1 px-4">
           Refresh AI

@@ -31,7 +31,8 @@ import {
   Twitter,
   Send, // Used for Telegram
   MessageCircle, // Used for WhatsApp
-  Instagram
+  Instagram,
+  ChevronDown
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -51,12 +52,22 @@ import {
 } from './components/LegalPages';
 
 type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'premium' | 'manual' | 'admin' | 'disclaimer' | 'privacy' | 'about' | 'contact' | 'sitemap' | 'terms';
+type LangCode = 'EN' | 'CN' | 'MY';
 
 const App: React.FC = () => {
+  // Detect language based on browser/device settings
+  const detectLanguage = (): LangCode => {
+    const browserLang = navigator.language.toLowerCase();
+    if (browserLang.includes('zh')) return 'CN';
+    if (browserLang.includes('ms') || browserLang.includes('my')) return 'MY';
+    return 'EN';
+  };
+
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [lang, setLang] = useState<'EN' | 'CN' | 'MY'>('EN');
+  const [lang, setLang] = useState<LangCode>(detectLanguage());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [countdown, setCountdown] = useState(240); // 4 minutes until next draw update
+  const [showLangMenu, setShowLangMenu] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -94,6 +105,41 @@ const App: React.FC = () => {
     </button>
   );
 
+  const LanguageSwitcher = ({ isMobile = false }) => (
+    <div className={`relative ${isMobile ? 'mr-2' : ''}`}>
+      <button 
+        onClick={() => setShowLangMenu(!showLangMenu)}
+        className="flex items-center gap-2 px-3 py-1.5 glass rounded-xl text-xs font-bold border border-white/10 hover:border-blue-500/50 transition-all"
+      >
+        <Globe size={14} className="text-blue-400" />
+        <span>{lang}</span>
+        <ChevronDown size={12} className={`transition-transform duration-200 ${showLangMenu ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {showLangMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)}></div>
+          <div className="absolute right-0 mt-2 w-32 glass border border-white/10 rounded-xl overflow-hidden shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+            {(['EN', 'CN', 'MY'] as const).map(l => (
+              <button
+                key={l}
+                onClick={() => {
+                  setLang(l);
+                  setShowLangMenu(false);
+                }}
+                className={`w-full px-4 py-2.5 text-left text-xs font-semibold hover:bg-blue-600/20 transition-colors ${
+                  lang === l ? 'text-blue-400 bg-blue-600/10' : 'text-slate-400'
+                }`}
+              >
+                {l === 'EN' ? 'English' : l === 'CN' ? '中文 (简体)' : 'Bahasa Melayu'}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white">
       {/* Mobile Header */}
@@ -102,9 +148,12 @@ const App: React.FC = () => {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-orbitron font-bold">N</div>
           <span className="font-orbitron font-bold text-lg tracking-tight">4DNEXUS<span className="text-blue-500">PRO</span></span>
         </div>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-slate-400">
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher isMobile />
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-slate-400">
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
@@ -177,6 +226,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            <LanguageSwitcher />
             <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
               <Bell size={20} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full border-2 border-[#050505]"></span>
@@ -233,7 +283,7 @@ const App: React.FC = () => {
                 <div className="lg:col-span-2 space-y-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-orbitron font-bold flex items-center gap-3">
-                      <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+                      <div className="nexus-line"></div>
                       Latest Results
                     </h2>
                   </div>
@@ -246,9 +296,9 @@ const App: React.FC = () => {
 
                 <div className="space-y-8">
                   <Predictor />
-                  <div className="glass rounded-2xl p-6">
-                    <h3 className="text-lg font-orbitron font-bold mb-4 flex items-center gap-2">
-                      <BarChart3 size={20} className="text-amber-500" />
+                  <div className="glass rounded-2xl p-6 border border-white/5">
+                    <h3 className="text-lg font-orbitron font-bold mb-4 flex items-center gap-3">
+                      <div className="nexus-line nexus-line-amber"></div>
                       Hot Frequency
                     </h3>
                     <div className="space-y-4">
@@ -269,9 +319,12 @@ const App: React.FC = () => {
 
           {activeView === 'stats' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-               <h2 className="text-3xl font-orbitron font-bold">Deep Data Analytics</h2>
+               <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3">
+                 <div className="nexus-line"></div>
+                 Deep Data Analytics
+               </h2>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="glass rounded-2xl p-8">
+                  <div className="glass rounded-2xl p-8 border border-white/5">
                     <h3 className="text-xl font-bold mb-2">Number Frequency Distribution</h3>
                     <StatsChart />
                   </div>
@@ -292,7 +345,10 @@ const App: React.FC = () => {
 
           {activeView === 'archive' && (
             <div className="space-y-6">
-              <h2 className="text-3xl font-orbitron font-bold">Historical Archive</h2>
+              <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3">
+                <div className="nexus-line"></div>
+                Historical Archive
+              </h2>
               <div className="glass rounded-2xl overflow-hidden border border-white/10">
                 <table className="w-full text-left border-collapse">
                   <thead>
