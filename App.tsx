@@ -271,6 +271,7 @@ const App: React.FC = () => {
         lang={lang}
         isFavorite={selectedResult ? isResultFavorite(selectedResult) : false}
         onToggleFavorite={selectedResult ? () => toggleFavorite(selectedResult) : undefined}
+        onShare={selectedResult ? () => setSharingResult(selectedResult) : undefined}
       />
 
       <ShareModal 

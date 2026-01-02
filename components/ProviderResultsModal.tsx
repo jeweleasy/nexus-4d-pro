@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { X, Trophy, ShieldCheck, Calendar, Hash, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Trophy, ShieldCheck, Calendar, Hash, Heart, Share2, Check } from 'lucide-react';
 import { LotteryResult, LotteryProvider } from '../types';
 import { LANGUAGES } from '../constants';
 import { ShadowButton } from './ShadowButton';
@@ -11,6 +11,7 @@ interface ProviderResultsModalProps {
   lang: 'EN' | 'CN' | 'MY';
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  onShare?: () => void;
 }
 
 export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ 
@@ -18,11 +19,13 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({
   onClose, 
   lang,
   isFavorite = false,
-  onToggleFavorite
+  onToggleFavorite,
+  onShare
 }) => {
   if (!result) return null;
 
   const t = LANGUAGES[lang];
+  const [justShared, setJustShared] = useState(false);
   
   const getProviderColor = (provider: LotteryProvider) => {
     switch (provider) {
@@ -31,6 +34,14 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({
       case LotteryProvider.DAMACAI: return 'from-blue-500 to-blue-700';
       case LotteryProvider.SINGAPORE: return 'from-blue-400 to-blue-600';
       default: return 'from-blue-600 to-indigo-800';
+    }
+  };
+
+  const handleShare = () => {
+    if (onShare) {
+      onShare();
+      setJustShared(true);
+      setTimeout(() => setJustShared(false), 2000);
     }
   };
 
@@ -58,10 +69,23 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {onShare && (
+                <button 
+                  onClick={handleShare}
+                  className={`p-3 rounded-full transition-all border flex items-center justify-center ${
+                    justShared 
+                    ? 'text-green-500 bg-green-500/10 border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                    : 'text-slate-400 bg-white/5 border-white/10 hover:text-white hover:bg-white/10 hover-pulse-icon'
+                  }`}
+                  title="Share Result"
+                >
+                  {justShared ? <Check size={24} className="animate-in zoom-in duration-300" /> : <Share2 size={24} />}
+                </button>
+              )}
               {onToggleFavorite && (
                 <button 
                   onClick={onToggleFavorite}
-                  className={`p-3 rounded-full transition-all border ${isFavorite ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-slate-400 bg-white/5 border-white/10 hover:text-white hover:bg-white/10'}`}
+                  className={`p-3 rounded-full transition-all border ${isFavorite ? 'text-red-500 bg-red-500/10 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'text-slate-400 bg-white/5 border-white/10 hover:text-white hover:bg-white/10'}`}
                 >
                   <Heart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
                 </button>

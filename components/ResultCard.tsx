@@ -34,6 +34,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   }, [isFavorite]);
 
   const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (onShare) {
       onShare(e);
       setJustShared(true);
@@ -58,13 +59,21 @@ export const ResultCard: React.FC<ResultCardProps> = ({
     <div className={`
       glass rounded-[2rem] p-6 relative overflow-hidden 
       transition-all duration-500 ease-out 
-      hover:scale-[1.02] hover:bg-white/[0.05] 
+      hover:scale-[1.02] 
       hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]
-      border border-white/5 
+      border 
       ${isLive ? 'animate-pulse-border' : ''}
-      ${isFavorite ? 'border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'hover:border-blue-500/30'}
+      ${isFavorite 
+        ? 'border-red-500/30 bg-red-500/[0.02] shadow-[0_0_20px_rgba(239,68,68,0.1)]' 
+        : 'border-white/5 hover:border-blue-500/30 hover:bg-white/[0.05]'
+      }
       animate-in fade-in slide-in-from-bottom-4
     `}>
+      {/* Dynamic Background Glow for Favorited Items */}
+      {isFavorite && (
+        <div className="absolute -right-10 -top-10 w-32 h-32 bg-red-500/5 blur-[50px] rounded-full pointer-events-none"></div>
+      )}
+
       <div className="absolute top-4 right-6 flex items-center gap-2 z-10">
         <div className="flex items-center gap-2">
           {onShare && (
@@ -72,19 +81,19 @@ export const ResultCard: React.FC<ResultCardProps> = ({
               onClick={handleShareClick}
               className={`p-2 rounded-xl transition-all duration-300 border active:scale-90 flex items-center justify-center ${
                 justShared 
-                ? 'text-green-500 bg-green-500/10 border-green-500/30' 
-                : 'text-slate-500 hover:text-white bg-white/5 border-white/10 hover-pulse'
+                ? 'text-green-500 bg-green-500/10 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                : 'text-slate-500 hover:text-white bg-white/5 border-white/10 hover-pulse-icon'
               }`}
               title="Share Result"
             >
-              {justShared ? <Check size={18} /> : <Share2 size={18} />}
+              {justShared ? <Check size={18} className="animate-in zoom-in duration-300" /> : <Share2 size={18} />}
             </button>
           )}
           {onToggleFavorite && (
             <button 
               onClick={onToggleFavorite}
               className={`
-                p-2 rounded-xl transition-all duration-300
+                flex items-center gap-2 p-2 px-3 rounded-xl transition-all duration-300
                 ${isFavorite 
                   ? 'text-red-500 bg-red-500/10 border border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
                   : 'text-slate-500 hover:text-white bg-white/5 border border-white/10'
@@ -98,6 +107,11 @@ export const ResultCard: React.FC<ResultCardProps> = ({
                 fill={isFavorite ? 'currentColor' : 'none'} 
                 className={`transition-transform duration-300 ${pop ? 'animate-heart-pop' : ''}`}
               />
+              {isFavorite && (
+                <span className="text-[9px] font-black uppercase tracking-widest animate-in slide-in-from-right-2 duration-300">
+                  Saved
+                </span>
+              )}
             </button>
           )}
         </div>
