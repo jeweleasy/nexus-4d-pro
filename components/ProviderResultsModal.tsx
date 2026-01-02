@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Trophy, ShieldCheck, Calendar, Hash } from 'lucide-react';
+import { X, Trophy, ShieldCheck, Calendar, Hash, Heart } from 'lucide-react';
 import { LotteryResult, LotteryProvider } from '../types';
 import { LANGUAGES } from '../constants';
 import { ShadowButton } from './ShadowButton';
@@ -9,9 +9,17 @@ interface ProviderResultsModalProps {
   result: LotteryResult | null;
   onClose: () => void;
   lang: 'EN' | 'CN' | 'MY';
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ result, onClose, lang }) => {
+export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ 
+  result, 
+  onClose, 
+  lang,
+  isFavorite = false,
+  onToggleFavorite
+}) => {
   if (!result) return null;
 
   const t = LANGUAGES[lang];
@@ -31,7 +39,6 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ resu
       <div className="absolute inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300" onClick={onClose}></div>
       
       <div className="relative w-full max-w-4xl glass rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl animate-in zoom-in slide-in-from-bottom-8 duration-500">
-        {/* Header Decor */}
         <div className={`h-2 w-full bg-gradient-to-r ${getProviderColor(result.provider)}`}></div>
         
         <div className="p-8 md:p-12">
@@ -50,13 +57,22 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ resu
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">
-              <X size={24} />
-            </button>
+            <div className="flex items-center gap-3">
+              {onToggleFavorite && (
+                <button 
+                  onClick={onToggleFavorite}
+                  className={`p-3 rounded-full transition-all border ${isFavorite ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-slate-400 bg-white/5 border-white/10 hover:text-white hover:bg-white/10'}`}
+                >
+                  <Heart size={24} fill={isFavorite ? 'currentColor' : 'none'} />
+                </button>
+              )}
+              <button onClick={onClose} className="p-3 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all">
+                <X size={24} />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Left: Top 3 Prizes */}
             <div className="space-y-8">
               <div className="p-8 rounded-3xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 relative overflow-hidden group">
                 <div className="absolute -right-8 -top-8 w-32 h-32 bg-amber-500/10 blur-3xl rounded-full"></div>
@@ -83,7 +99,6 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ resu
               </div>
             </div>
 
-            {/* Right: Specials & Consolations */}
             <div className="space-y-8">
               <div>
                 <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-4 flex items-center gap-2">
