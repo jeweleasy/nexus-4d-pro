@@ -5,16 +5,42 @@ export class PredictionService {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Correctly initialize with process.env.API_KEY directly as required
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
-  async generateLuckyNumber() {
+  async chatWithAssistant(history: {role: 'user' | 'model', text: string}[], currentInput: string) {
     try {
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Act as a high-tech 4D Numerology Oracle. Based on current universal entropy and digital resonance (Time: ${new Date().toISOString()}), generate exactly one lucky 4-digit number.
-                   Also provide a one-sentence "Cosmic Rationale" (fortune) why this number is special right now. 
-                   Format as JSON with 'number' (string) and 'fortune' (string).`,
+        contents: [
+          ...history.map(h => ({ role: h.role, parts: [{ text: h.text }] })),
+          { role: 'user', parts: [{ text: currentInput }] }
+        ],
+        config: {
+          systemInstruction: `You are the 4D Nexus Pro AI Assistant. 
+          Help users with lottery results, predictions, and platform features. 
+          Be professional, tech-focused, and concise. 
+          Remind users about responsible gaming if they seem distressed about losses.
+          Latest results available in context: Magnum, Toto, Da Ma Cai (Simulated for this demo).`
+        }
+      });
+      return response.text || "I'm processing the nexus streams. Please repeat.";
+    } catch (error) {
+      return "Connectivity to the AI Core is intermittent. Please try again.";
+    }
+  }
+
+  async generatePersonalizedLucky(data: { birthdate?: string; zodiac?: string; pickType?: string }) {
+    try {
+      const prompt = `Generate a 4D lucky number based on these parameters: 
+                      Birthdate: ${data.birthdate || 'Unknown'}, 
+                      Zodiac: ${data.zodiac || 'Unknown'}, 
+                      Preference: ${data.pickType || 'Random'}.
+                      Provide the number and a 1-sentence "Cosmic Insight".`;
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -27,27 +53,70 @@ export class PredictionService {
           }
         }
       });
-      return JSON.parse(response.text || '{"number": "8888", "fortune": "The digital winds favor the consistent."}');
+      return JSON.parse(response.text || '{"number": "7777", "fortune": "The stars align for your path."}');
     } catch (error) {
-      console.error("Lucky number generation failed:", error);
-      return { number: "????", fortune: "Connection to Nexus Core unstable. Try again." };
+      return { number: "8888", fortune: "Universal entropy suggests a balanced pick." };
     }
+  }
+
+  async parseVoiceCommand(transcript: string) {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze this voice command: "${transcript}". 
+                   Determine the user's intent related to a 4D lottery app.
+                   Available Intents: [CHECK_RESULT, GENERATE_LUCKY, VIEW_STATS, OPEN_COMMUNITY, OPEN_AR].
+                   Return JSON with 'intent' and 'provider' (null if not mentioned).`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              intent: { type: Type.STRING },
+              provider: { type: Type.STRING, nullable: true }
+            },
+            required: ['intent']
+          }
+        }
+      });
+      return JSON.parse(response.text || '{"intent": "UNKNOWN"}');
+    } catch (error) {
+      return { intent: "UNKNOWN" };
+    }
+  }
+
+  async getDeepInsights(historicalData: string) {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze winner sequence: ${historicalData}. Format as JSON.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sentiment: { type: Type.STRING },
+              convergence: { type: Type.NUMBER },
+              recommendation: { type: Type.STRING }
+            }
+          }
+        }
+      });
+      return JSON.parse(response.text || '{}');
+    } catch (error) {
+      return { sentiment: "Neutral", convergence: 50, recommendation: "Stable clusters" };
+    }
+  }
+
+  async generateLuckyNumber() {
+    return this.generatePersonalizedLucky({});
   }
 
   async getNewsAggregated() {
     try {
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Act as a senior lottery market journalist. Generate 4 high-quality, realistic lottery-related news articles based on current market trends.
-                   Each news item MUST include:
-                   - Headline: Professional and engaging
-                   - Summary: 2-3 detailed sentences
-                   - Paper Name: A reputable regional newspaper
-                   - Page Number: Specific page (e.g., B4, A12)
-                   - Category: One of [Market, Regulatory, Jackpot, Analysis]
-                   - imagePrompt: A detailed prompt for an AI to generate a professional, abstract, high-tech lottery-related image. No people, focus on data, lighting, and symbolism.
-                   
-                   Format as JSON with a 'news' array.`,
+        contents: `Generate 4 realistic lottery-related news articles. Format as JSON.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -65,8 +134,7 @@ export class PredictionService {
                     category: { type: Type.STRING },
                     date: { type: Type.STRING },
                     imagePrompt: { type: Type.STRING }
-                  },
-                  required: ['headline', 'summary', 'paperName', 'pageNumber', 'category', 'date', 'imagePrompt']
+                  }
                 }
               }
             }
@@ -75,35 +143,25 @@ export class PredictionService {
       });
       return JSON.parse(response.text || '{"news": []}');
     } catch (error) {
-      console.error("News aggregation failed:", error);
       return null;
     }
   }
 
   async generateNewsVisual(prompt: string) {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      const response = await ai.models.generateContent({
+      const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
-          parts: [{ text: `Professional corporate visualization: ${prompt}. Cinematic lighting, 8k resolution, tech aesthetic, no human faces, strictly abstract data/business theme.` }]
+          parts: [{ text: `Professional corporate visualization: ${prompt}. Cinematic lighting.` }]
         },
-        config: {
-          imageConfig: {
-            aspectRatio: "16:9"
-          }
-        }
+        config: { imageConfig: { aspectRatio: "16:9" } }
       });
-
       for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
+        if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
       }
       return null;
     } catch (error) {
-      console.error("Image generation failed:", error);
-      return `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/450`;
+      return null;
     }
   }
 
@@ -111,9 +169,7 @@ export class PredictionService {
     try {
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Analyze the following 4D lottery historical numbers and provide 3 predictive patterns. 
-                   Data: ${historicalData}. 
-                   Format your response as a JSON object with predictions array containing number (4 digits), probability (0-1), and reasoning (brief string).`,
+        contents: `Analyze historical data: ${historicalData}. Return 3 predictions with JSON.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -127,25 +183,16 @@ export class PredictionService {
                     number: { type: Type.STRING },
                     probability: { type: Type.NUMBER },
                     reasoning: { type: Type.STRING }
-                  },
-                  required: ['number', 'probability', 'reasoning']
+                  }
                 }
               }
             }
           }
         }
       });
-
       return JSON.parse(response.text || '{"predictions": []}');
     } catch (error) {
-      console.error("Prediction failed:", error);
-      return { 
-        predictions: [
-          { number: "4829", probability: 0.15, reasoning: "Frequency analysis anomaly detected in recent draws." },
-          { number: "1022", probability: 0.12, reasoning: "Cluster pattern matching Magnum historical cycles." },
-          { number: "9583", probability: 0.10, reasoning: "Recurring 'Cold' number rebound expectation." }
-        ]
-      };
+      return { predictions: [] };
     }
   }
 }

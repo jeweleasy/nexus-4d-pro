@@ -12,35 +12,48 @@ const getRelativeDate = (daysAgo: number) => {
 // Generate a rich set of results for the last 7 days to ensure "near-time" availability
 const generateRecentResults = (): LotteryResult[] => {
   const providers = [
-    LotteryProvider.MAGNUM, 
-    LotteryProvider.TOTO, 
-    LotteryProvider.DAMACAI, 
-    LotteryProvider.GDLOTTO,
-    LotteryProvider.SINGAPORE,
-    LotteryProvider.PERDANA4D
+    { name: LotteryProvider.MAGNUM, type: '4D' as const },
+    { name: LotteryProvider.TOTO, type: '4D' as const },
+    { name: LotteryProvider.DAMACAI, type: '4D' as const },
+    { name: LotteryProvider.GDLOTTO, type: '4D' as const },
+    { name: LotteryProvider.SINGAPORE, type: '4D' as const },
+    { name: LotteryProvider.TOTO5D, type: '5D' as const },
+    { name: LotteryProvider.TOTO6D, type: '6D' as const },
+    { name: LotteryProvider.MAGNUMLIFE, type: 'LIFE' as const }
   ];
   
   const results: LotteryResult[] = [];
   
-  // Create results for Today (as Live/Pending), Yesterday (Final), and the last few draw days (Wed, Sat, Sun)
   [0, 1, 2, 3, 4, 7].forEach(daysAgo => {
     const dateStr = getRelativeDate(daysAgo);
     
-    // Most providers draw on Wed, Sat, Sun (and Tue for some)
-    // We simulate draws for all for testing purposes so there is no "empty" state
     providers.forEach(p => {
-      results.push({
-        provider: p,
+      const res: LotteryResult = {
+        provider: p.name,
+        type: p.type,
         drawDate: dateStr,
         drawNumber: `${Math.floor(Math.random() * 1000 + 5000)}/24`,
-        first: Math.floor(1000 + Math.random() * 9000).toString(),
-        second: Math.floor(1000 + Math.random() * 9000).toString(),
-        third: Math.floor(1000 + Math.random() * 9000).toString(),
-        specials: Array(10).fill(0).map(() => Math.floor(1000 + Math.random() * 9000).toString()),
-        consolations: Array(10).fill(0).map(() => Math.floor(1000 + Math.random() * 9000).toString()),
+        first: p.type === '4D' ? Math.floor(1000 + Math.random() * 9000).toString() :
+               p.type === '5D' ? Math.floor(10000 + Math.random() * 89999).toString() :
+               p.type === '6D' ? Math.floor(100000 + Math.random() * 899999).toString() :
+               "1, 5, 12, 19, 25, 31, 35, 36", // Mock Life numbers
         status: daysAgo === 0 ? 'Live' : 'Final',
         timestamp: Date.now() - (daysAgo * 86400000)
-      });
+      };
+
+      if (p.type === '4D') {
+        res.second = Math.floor(1000 + Math.random() * 9000).toString();
+        res.third = Math.floor(1000 + Math.random() * 9000).toString();
+        res.specials = Array(10).fill(0).map(() => Math.floor(1000 + Math.random() * 9000).toString());
+        res.consolations = Array(10).fill(0).map(() => Math.floor(1000 + Math.random() * 9000).toString());
+      } else if (p.type === '5D' || p.type === '6D') {
+        res.second = Math.floor(p.type === '5D' ? 10000 : 100000 + Math.random() * 90000).toString();
+        res.third = Math.floor(p.type === '5D' ? 1000 : 10000 + Math.random() * 9000).toString();
+        res.fourth = Math.floor(p.type === '5D' ? 100 : 1000 + Math.random() * 900).toString();
+        res.fifth = Math.floor(p.type === '5D' ? 10 : 100 + Math.random() * 90).toString();
+      }
+
+      results.push(res);
     });
   });
   
@@ -92,6 +105,9 @@ export const LANGUAGES = {
       first: '1st Prize',
       second: '2nd Prize',
       third: '3rd Prize',
+      fourth: '4th Prize',
+      fifth: '5th Prize',
+      sixth: '6th Prize',
       special: 'Special',
       consolation: 'Consolation'
     }
@@ -109,6 +125,9 @@ export const LANGUAGES = {
       first: '头奖',
       second: '二奖',
       third: '三奖',
+      fourth: '四奖',
+      fifth: '五奖',
+      sixth: '六奖',
       special: '特别奖',
       consolation: '安慰奖'
     }
@@ -126,6 +145,9 @@ export const LANGUAGES = {
       first: 'Hadiah Pertama',
       second: 'Hadiah Kedua',
       third: 'Hadiah Ketiga',
+      fourth: 'Hadiah Ke-4',
+      fifth: 'Hadiah Ke-5',
+      sixth: 'Hadiah Ke-6',
       special: 'Istimewa',
       consolation: 'Saguhati'
     }

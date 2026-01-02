@@ -14,18 +14,29 @@ export enum LotteryProvider {
   DRAGON4D = 'Dragon 4D',
   NEWWIN4D = 'NewWin 4D',
   PMP4D = 'PMP 4D',
-  LUCKY4D = 'Lucky 4D'
+  LUCKY4D = 'Lucky 4D',
+  TOTO5D = 'Sports Toto 5D',
+  TOTO6D = 'Sports Toto 6D',
+  MAGNUMLIFE = 'Magnum Life'
 }
+
+export type ResultType = '4D' | '5D' | '6D' | 'JACKPOT' | 'LIFE';
 
 export interface LotteryResult {
   provider: LotteryProvider;
+  type: ResultType;
   drawDate: string;
   drawNumber: string;
   first: string;
-  second: string;
-  third: string;
-  specials: string[];
-  consolations: string[];
+  second?: string;
+  third?: string;
+  fourth?: string;
+  fifth?: string;
+  sixth?: string;
+  specials?: string[];
+  consolations?: string[];
+  jackpot1?: string;
+  jackpot2?: string;
   status: 'Live' | 'Final' | 'Pending';
   timestamp: number;
 }
@@ -44,11 +55,29 @@ export interface PredictionResult {
   reasoning: string;
 }
 
-export interface LuckyNumberResult {
-  number: string;
-  fortune: string;
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  accuracy: number;
+  points: number;
+  badge: string;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+}
+
+export interface JackpotData {
+  provider: LotteryProvider;
+  amount: number;
+  label: string;
+  isHot: boolean;
+  currency: string;
+}
+
+// Added missing LotteryNews interface used for news aggregation and visualization
 export interface LotteryNews {
   id: string;
   headline: string;
@@ -56,7 +85,7 @@ export interface LotteryNews {
   paperName: string;
   pageNumber: string;
   date: string;
-  category: 'Market' | 'Regulatory' | 'Jackpot' | 'Analysis';
+  category: string;
   imagePrompt?: string;
   imageUrl?: string;
 }
