@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LotteryProvider, LotteryResult, StatisticalData, LotteryNews } from './types';
+import { LotteryProvider, LotteryResult, StatisticalData, LotteryNews, LeaderboardEntry } from './types';
 
 // Helper to generate dates relative to today
 const getRelativeDate = (daysAgo: number) => {
@@ -68,6 +68,15 @@ export const HOT_NUMBERS: StatisticalData[] = [
   { number: '2518', frequency: 9, lastDrawn: getRelativeDate(2), gap: 0, status: 'hot' },
   { number: '0904', frequency: 8, lastDrawn: getRelativeDate(3), gap: 1, status: 'neutral' },
   { number: '7721', frequency: 2, lastDrawn: getRelativeDate(30), gap: 120, status: 'cold' },
+];
+
+export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
+  { rank: 1, username: 'NexusOracle', accuracy: 94.2, points: 12450, badge: 'Grandmaster' },
+  { rank: 2, username: 'TotoSensei', accuracy: 89.8, points: 10820, badge: 'Elite' },
+  { rank: 3, username: 'QuantumPunter', accuracy: 88.5, points: 9540, badge: 'Expert' },
+  { rank: 4, username: 'VectorX', accuracy: 82.1, points: 7200, badge: 'Veteran' },
+  { rank: 5, username: 'LottoLlama', accuracy: 79.4, points: 6100, badge: 'Pro' },
+  { rank: 6, username: 'DataMiner01', accuracy: 76.8, points: 5400, badge: 'Rising Star' },
 ];
 
 export const MOCK_NEWS: LotteryNews[] = [

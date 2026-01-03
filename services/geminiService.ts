@@ -5,7 +5,6 @@ export class PredictionService {
   private ai: GoogleGenAI;
 
   constructor() {
-    // Correctly initialize with process.env.API_KEY directly as required
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
@@ -22,7 +21,7 @@ export class PredictionService {
           Help users with lottery results, predictions, and platform features. 
           Be professional, tech-focused, and concise. 
           Remind users about responsible gaming if they seem distressed about losses.
-          Latest results available in context: Magnum, Toto, Da Ma Cai (Simulated for this demo).`
+          Latest results available in context: Magnum, Toto, Da Ma Cai (Simulated).`
         }
       });
       return response.text || "I'm processing the nexus streams. Please repeat.";
@@ -168,7 +167,7 @@ export class PredictionService {
   async getPredictions(historicalData: string) {
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3-pro-preview',
         contents: `Analyze historical data: ${historicalData}. Return 3 predictions with JSON.`,
         config: {
           responseMimeType: "application/json",
