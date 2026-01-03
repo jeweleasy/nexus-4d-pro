@@ -4,15 +4,17 @@ import { X, Mail, Fingerprint, Lock, ShieldCheck, User, Loader2, ArrowRight, Ale
 import { ShadowButton } from './ShadowButton';
 import { NexusLogo } from './NexusLogo';
 import { User as NexusUser } from '../types';
+import { LANGUAGES } from '../constants';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  lang: 'EN' | 'CN' | 'MY';
   onLogin: (user: NexusUser) => void;
   onCreateId: () => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin, onCreateId }) => {
+export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, onLogin, onCreateId }) => {
   const [stage, setStage] = useState<1 | 2>(1); // 1 = Activation (Register), 2 = Handshake (Login)
   const [view, setView] = useState<'form' | 'forgot-pin' | 'reset-success'>('form');
   const [loading, setLoading] = useState(false);
@@ -20,6 +22,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const [shake, setShake] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   
+  const t = LANGUAGES[lang];
+
   // CAPTCHA State
   const [captcha, setCaptcha] = useState({ a: 0, b: 0, result: 0 });
   const [captchaInput, setCaptchaInput] = useState('');
@@ -193,7 +197,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           <div className="flex flex-col items-center gap-3 text-center">
             <NexusLogo size="md" />
             <div>
-              <h3 className="text-xl font-orbitron font-bold">Node Activation</h3>
+              <h3 className="text-xl font-orbitron font-bold">{t.common.activation}</h3>
               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                 {stage === 1 ? 'Establish Neural Identity' : 'Secure Handshake Protocol'}
               </p>
@@ -301,7 +305,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                   onClick={() => setStage(stage === 1 ? 2 : 1)} 
                   className="text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300 transition-colors"
                 >
-                  {stage === 1 ? 'Login if you have ID' : 'Need to Register?'}
+                  {stage === 1 ? t.common.login : t.common.activation}
                 </button>
                 {stage === 2 && (
                   <button type="button" onClick={() => setView('forgot-pin')} className="text-[8px] font-bold text-slate-600 uppercase hover:text-slate-400 transition-colors">Forgot PIN?</button>
@@ -333,7 +337,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                   <>
                     <Fingerprint size={18} className="group-hover:text-amber-400 transition-colors" />
                     <span className="font-orbitron tracking-widest text-[10px] uppercase">
-                      {stage === 1 ? 'Activate Node' : 'Node Login'}
+                      {stage === 1 ? t.common.activation : t.common.login}
                     </span>
                     <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                   </>
@@ -348,7 +352,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
               {stage === 1 && (
                 <div className="mt-3 flex items-center justify-center gap-2 text-[8px] text-slate-500 font-black uppercase tracking-widest">
                   <Sparkles size={10} className="text-amber-500" />
-                  <span>Earn 15 Welcome Points on Sync</span>
+                  <span>{t.common.welcomeBonus}</span>
                 </div>
               )}
             </div>

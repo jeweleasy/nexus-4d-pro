@@ -1,13 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Zap, RefreshCw, Cpu } from 'lucide-react';
+import { Sparkles, Zap, RefreshCw, Cpu, Calendar, Star, Fingerprint } from 'lucide-react';
 import { predictionService } from '../services/geminiService';
 import { ShadowButton } from './ShadowButton';
+import { LANGUAGES } from '../constants';
 
-export const LuckyNumber: React.FC = () => {
+interface LuckyNumberProps {
+  lang: 'EN' | 'CN' | 'MY';
+}
+
+export const LuckyNumber: React.FC<LuckyNumberProps> = ({ lang }) => {
   const [analyzing, setAnalyzing] = useState(false);
   const [luckyResult, setLuckyResult] = useState<{ number: string; fortune: string } | null>(null);
   const [ticker, setTicker] = useState("0000");
+  const [birthdate, setBirthdate] = useState('');
+  const [zodiac, setZodiac] = useState('');
+  const [showConfig, setShowConfig] = useState(false);
+
+  const t = LANGUAGES[lang];
 
   useEffect(() => {
     let interval: any;
@@ -23,9 +33,8 @@ export const LuckyNumber: React.FC = () => {
     setAnalyzing(true);
     setLuckyResult(null);
     
-    // Artificial delay for tension
     const [result] = await Promise.all([
-      predictionService.generateLuckyNumber(),
+      predictionService.generatePersonalizedLucky({ birthdate, zodiac }),
       new Promise(resolve => setTimeout(resolve, 2000))
     ]);
     
@@ -40,10 +49,43 @@ export const LuckyNumber: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-orbitron font-bold text-white flex items-center gap-3">
           <div className="nexus-line nexus-line-amber"></div>
-          Nexus Luck Engine
+          {t.common.luckyNumber}
         </h3>
-        <Sparkles size={18} className="text-amber-500 animate-pulse" />
+        <button onClick={() => setShowConfig(!showConfig)} className="p-2 hover:bg-white/5 rounded-xl text-amber-500 transition-all">
+          <Fingerprint size={18} />
+        </button>
       </div>
+
+      {showConfig && (
+        <div className="space-y-4 mb-6 p-4 rounded-2xl bg-white/5 border border-white/5 animate-in slide-in-from-top-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+              <Calendar size={12}/> Birth Resonance
+            </label>
+            <input 
+              type="date" 
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className="bg-black/40 border border-white/10 rounded-xl p-2 text-xs focus:outline-none focus:border-amber-500/50 [color-scheme:dark]"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+              <Star size={12}/> Zodiac Alignment
+            </label>
+            <select 
+              value={zodiac}
+              onChange={(e) => setZodiac(e.target.value)}
+              className="bg-black/40 border border-white/10 rounded-xl p-2 text-xs focus:outline-none focus:border-amber-500/50"
+            >
+              <option value="">Auto-Detect</option>
+              {['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'].map(z => (
+                <option key={z} value={z}>{z}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col items-center py-4 space-y-6">
         <div className={`
@@ -62,12 +104,6 @@ export const LuckyNumber: React.FC = () => {
               <span className="text-[10px] font-bold uppercase tracking-widest">Awaiting Pulse</span>
             </div>
           )}
-          
-          {analyzing && (
-            <div className="absolute inset-0 bg-amber-500/5 flex items-center justify-center overflow-hidden">
-                <div className="w-full h-0.5 bg-amber-500/50 absolute animate-[scan-line_1s_infinite_linear]"></div>
-            </div>
-          )}
         </div>
 
         {luckyResult && !analyzing && (
@@ -84,23 +120,11 @@ export const LuckyNumber: React.FC = () => {
           className="w-full py-3 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
         >
           {analyzing ? (
-            <>
-              <RefreshCw size={14} className="animate-spin" />
-              Synchronizing...
-            </>
+            <><RefreshCw size={14} className="animate-spin" /> Synchronizing...</>
           ) : (
-            <>
-              <Cpu size={14} />
-              {luckyResult ? 'Recalibrate Luck' : 'Activate Nexus Luck'}
-            </>
+            <><Cpu size={14} /> {luckyResult ? 'Recalibrate Luck' : 'Activate Nexus Luck'}</>
           )}
         </ShadowButton>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-white/5">
-        <p className="text-[9px] text-slate-500 text-center leading-relaxed">
-          * This is an AI-generated number based on digital entropy. Accuracy is not guaranteed. 18+ Only.
-        </p>
       </div>
     </div>
   );

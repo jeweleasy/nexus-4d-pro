@@ -4,15 +4,19 @@ import { predictionService } from '../services/geminiService';
 import { PredictionResult } from '../types';
 import { ShadowButton } from './ShadowButton';
 import { BrainCircuit, Activity, TrendingUp, Info, Crown, Lock } from 'lucide-react';
+import { LANGUAGES } from '../constants';
 
 interface PredictorProps {
   isPremium?: boolean;
+  lang: 'EN' | 'CN' | 'MY';
 }
 
-export const Predictor: React.FC<PredictorProps> = ({ isPremium = false }) => {
+export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang }) => {
   const [loading, setLoading] = useState(false);
   const [predictions, setPredictions] = useState<PredictionResult[]>([]);
   const [insights, setInsights] = useState<any>(null);
+
+  const t = LANGUAGES[lang];
 
   const fetchPredictions = async () => {
     setLoading(true);
@@ -44,7 +48,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false }) => {
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-orbitron font-bold flex items-center gap-3">
           <BrainCircuit className={isPremium ? "text-amber-400" : "text-purple-400"} size={20} />
-          Neural Predictor
+          {t.common.predictor}
         </h3>
       </div>
 
@@ -113,7 +117,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false }) => {
         variant={isPremium ? "gold" : "secondary"} 
         className="w-full mt-4 py-3 text-[10px] uppercase font-black tracking-widest"
       >
-        RECALIBRATE ENGINE
+        {t.common.recalibrate}
       </ShadowButton>
     </div>
   );

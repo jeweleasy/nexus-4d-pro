@@ -69,7 +69,7 @@ import { BlockchainVerification } from './components/BlockchainVerification';
 import { JackpotTracker } from './components/JackpotTracker';
 import { AIChatAssistant } from './components/AIChatAssistant';
 import { ArExperience } from './components/ArExperience';
-import { Heatmap } from './components/Heatmap';
+import { DigitHeatmap } from './components/DigitHeatmap';
 import { GamingTools } from './components/GamingTools';
 import { RankingSystem } from './components/RankingSystem';
 import { RegistrationModal } from './components/RegistrationModal';
@@ -89,6 +89,9 @@ type LangCode = 'EN' | 'CN' | 'MY';
 
 const App: React.FC = () => {
   const detectLanguage = (): LangCode => {
+    const saved = localStorage.getItem('nexus_pro_lang') as LangCode;
+    if (saved && (saved === 'EN' || saved === 'CN' || saved === 'MY')) return saved;
+    
     const browserLang = navigator.language.toLowerCase();
     if (browserLang.includes('zh')) return 'CN';
     if (browserLang.includes('ms') || browserLang.includes('my')) return 'MY';
@@ -97,8 +100,8 @@ const App: React.FC = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [activeView, setActiveView] = useState<View>('dashboard');
   const [lang, setLang] = useState<LangCode>(detectLanguage());
+  const [activeView, setActiveView] = useState<View>('dashboard');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState<LotteryResult | null>(null);
@@ -126,6 +129,8 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const t = LANGUAGES[lang];
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
@@ -133,6 +138,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  useEffect(() => {
+    localStorage.setItem('nexus_pro_lang', lang);
+  }, [lang]);
 
   useEffect(() => {
     if (currentUser) {
@@ -190,10 +199,10 @@ const App: React.FC = () => {
 
   const displayResults = useMemo(() => {
     const dateResults = MOCK_RESULTS.filter(res => res.drawDate === selectedDate);
-    if (dateResults.length > 0) return { results: dateResults, isFallback: false, label: 'OFFICIAL RESULTS', date: selectedDate };
+    if (dateResults.length > 0) return { results: dateResults, isFallback: false, label: t.common.officialResults, date: selectedDate };
     const latestAvailableDate = [...MOCK_RESULTS].sort((a,b) => b.timestamp - a.timestamp)[0]?.drawDate || todayStr;
-    return { results: MOCK_RESULTS.filter(r => r.drawDate === latestAvailableDate), isFallback: true, label: 'LATEST RESULTS', date: latestAvailableDate };
-  }, [selectedDate]);
+    return { results: MOCK_RESULTS.filter(r => r.drawDate === latestAvailableDate), isFallback: true, label: t.common.latestResults, date: latestAvailableDate };
+  }, [selectedDate, lang]);
 
   const handleVoiceCommand = (intent: string, provider: string | null) => {
     setToast({ message: `AI Intent: ${intent}`, type: 'info' });
@@ -260,6 +269,7 @@ const App: React.FC = () => {
       <LoginModal 
         isOpen={showLogin}
         onClose={() => setShowLogin(false)}
+        lang={lang}
         onLogin={(user) => {
           setCurrentUser(user);
           const isNew = user.points === 15;
@@ -269,7 +279,6 @@ const App: React.FC = () => {
           });
         }}
         onCreateId={() => {
-          // This link now effectively resets the modal to Stage 1 (Register)
           setToast({ message: "Redirecting to Activation Channel", type: 'info' });
         }}
       />
@@ -281,18 +290,18 @@ const App: React.FC = () => {
         </div>
         
         <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
-          <NavItem icon={LayoutDashboard} label="Dashboard" id="dashboard" />
-          <NavItem icon={BarChart3} label="Deep Analytics" id="stats" />
-          <NavItem icon={History} label="Historical Archive" id="archive" />
-          <NavItem icon={Heart} label="My Library" id="favorites" />
-          <NavItem icon={MessageCircle} label="Live Community" id="community" />
-          <NavItem icon={Trophy} label="Oracle Rankings" id="challenges" />
-          <NavItem icon={Cpu} label="AI Predictions" id="predictions" badge={isPremium ? "PRO" : "LITE"} />
-          <NavItem icon={Newspaper} label="Industry News" id="news" />
-          <NavItem icon={Code} label="Web Widgets" id="widgets" />
+          <NavItem icon={LayoutDashboard} label={t.nav.dashboard} id="dashboard" />
+          <NavItem icon={BarChart3} label={t.nav.stats} id="stats" />
+          <NavItem icon={History} label={t.nav.archive} id="archive" />
+          <NavItem icon={Heart} label={t.nav.favorites} id="favorites" />
+          <NavItem icon={MessageCircle} label={t.nav.community} id="community" />
+          <NavItem icon={Trophy} label={t.nav.challenges} id="challenges" />
+          <NavItem icon={Cpu} label={t.nav.predictions} id="predictions" badge={isPremium ? "PRO" : "LITE"} />
+          <NavItem icon={Newspaper} label={t.nav.news} id="news" />
+          <NavItem icon={Code} label={t.nav.widgets} id="widgets" />
           <div className="my-4 border-t border-slate-200 dark:border-white/5"></div>
-          <NavItem icon={CreditCard} label="Nexus Elite" id="premium" />
-          <NavItem icon={ShieldCheck} label="Admin Ops" id="admin" />
+          <NavItem icon={CreditCard} label={t.nav.premium} id="premium" />
+          <NavItem icon={ShieldCheck} label={t.nav.admin} id="admin" />
         </nav>
 
         <div className="space-y-4">
@@ -300,7 +309,7 @@ const App: React.FC = () => {
              <button onClick={() => setActiveView('premium')} className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30 text-amber-500 text-xs font-bold flex items-center justify-between group hover:scale-[1.02] transition-all">
                 <div className="flex items-center gap-2">
                    <Zap size={14} className="group-hover:animate-pulse" />
-                   UPGRADE TO ELITE
+                   {t.common.upgrade}
                 </div>
                 <ArrowRight size={14} />
              </button>
@@ -329,7 +338,9 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2 md:gap-4">
             <div className="hidden sm:flex items-center gap-2 mr-2 md:mr-4">
                 <div className={`h-2 w-2 rounded-full ${isPremium ? 'bg-amber-500 animate-pulse shadow-[0_0_8px_amber]' : currentUser ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-slate-500'}`}></div>
-                <span className="text-[10px] font-black uppercase text-slate-500">{isPremium ? 'Nexus Elite' : currentUser ? 'Verified Node' : 'Guest Punter'}</span>
+                <span className="text-[10px] font-black uppercase text-slate-500">
+                  {isPremium ? t.common.elite : currentUser ? t.common.verifiedNode : t.common.guestPunter}
+                </span>
             </div>
             
             <div className="relative">
@@ -374,7 +385,7 @@ const App: React.FC = () => {
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
                 >
                   <Fingerprint size={16} />
-                  Node Activation
+                  {t.common.activation}
                 </button>
               </div>
             )}
@@ -388,11 +399,11 @@ const App: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-orbitron font-bold flex items-center gap-3">
                     <div className="nexus-line nexus-line-amber"></div>
-                    Real-Time Jackpot Pulse
+                    {t.common.jackpotPulse}
                   </h2>
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                    <span className="text-[9px] font-black uppercase text-slate-500">Global Sync Active</span>
+                    <span className="text-[9px] font-black uppercase text-slate-500">{t.common.syncActive}</span>
                   </div>
                 </div>
                 <JackpotTracker />
@@ -426,9 +437,9 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-8">
-                  <LuckyNumber />
-                  <Predictor isPremium={isPremium} />
-                  <Heatmap />
+                  <LuckyNumber lang={lang} />
+                  <Predictor isPremium={isPremium} lang={lang} />
+                  <DigitHeatmap lang={lang} />
                   {!isPremium && <AdSensePlaceholder slot="SIDEBAR_NATIVE" />}
                   <GamingTools />
                 </div>
@@ -465,18 +476,18 @@ const App: React.FC = () => {
           {activeView === 'challenges' && <RankingSystem />}
           {activeView === 'predictions' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-               <Predictor isPremium={isPremium} />
+               <Predictor isPremium={isPremium} lang={lang} />
                <div className="space-y-8">
-                 <LuckyNumber />
-                 <Heatmap />
+                 <LuckyNumber lang={lang} />
+                 <DigitHeatmap lang={lang} />
                </div>
             </div>
           )}
-          {activeView === 'stats' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold">Market Matrix</h2><StatsChart /><Heatmap /></div>}
+          {activeView === 'stats' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold">{t.nav.stats}</h2><StatsChart /><DigitHeatmap lang={lang} /></div>}
           {activeView === 'news' && <NewsSection />}
           {activeView === 'favorites' && (
             <div className="space-y-8">
-              <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" fill="currentColor"/> My Library</h2>
+              <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" fill="currentColor"/> {t.nav.favorites}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{favorites.map((r,i)=>(<ResultCard key={i} result={r} lang={lang} isFavorite={true} onToggleFavorite={()=>toggleFavorite(r)} onShare={()=>setSharingResult(r)}/>))}</div>
             </div>
           )}
@@ -508,9 +519,9 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <h4 className="text-[10px] font-black uppercase text-slate-900 dark:text-white tracking-widest">Platform</h4>
                   <ul className="text-xs space-y-2">
-                    <li><button onClick={()=>setActiveView('dashboard')} className="hover:text-blue-600 transition-colors">Dashboard</button></li>
-                    <li><button onClick={()=>setActiveView('stats')} className="hover:text-blue-600 transition-colors">Analytics</button></li>
-                    <li><button onClick={() => setActiveView('premium')} className="hover:text-blue-600 transition-colors">Nexus Elite</button></li>
+                    <li><button onClick={()=>setActiveView('dashboard')} className="hover:text-blue-600 transition-colors">{t.nav.dashboard}</button></li>
+                    <li><button onClick={()=>setActiveView('stats')} className="hover:text-blue-600 transition-colors">{t.nav.stats}</button></li>
+                    <li><button onClick={() => setActiveView('premium')} className="hover:text-blue-600 transition-colors">{t.nav.premium}</button></li>
                   </ul>
                 </div>
                 <div className="space-y-4">

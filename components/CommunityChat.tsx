@@ -4,7 +4,7 @@ import {
   MessageCircle, Send, User, ShieldCheck, Sparkles, Hash, Users, 
   Activity, TrendingUp, Info, Search, Crown, Lock, Link as LinkIcon,
   Clock, Calendar, MessageSquare, Mic, ShieldAlert, Bot, AtSign,
-  Phone, Coins
+  Phone, Coins, Volume2, Headset, X, Check
 } from 'lucide-react';
 import { predictionService } from '../services/geminiService';
 import { User as NexusUser } from '../types';
@@ -36,7 +36,10 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
   const [input, setInput] = useState('');
   const [isLoadingBot, setIsLoadingBot] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 'm1', user: 'Nexus_Bot', text: 'Welcome to the 4D Nexus Community. Ask me anything about results or rules!', time: '09:00', date: '2024-10-24', isBot: true, avatarId: 0 },
@@ -44,11 +47,31 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
     { id: 'm3', user: 'TotoMaster', text: 'Anyone tracking the 1102 cluster?', time: '14:32', date: '2024-10-24', isRegistered: true, avatarId: 2 },
   ]);
 
+  // Derived list of unique users for tagging suggestions
+  const recentUsers = useMemo(() => {
+    const users = messages.filter(m => !m.isBot).map(m => m.user);
+    return Array.from(new Set(users));
+  }, [messages]);
+
+  const filteredTags = useMemo(() => {
+    const lastWord = input.split(' ').pop() || '';
+    if (lastWord.startsWith('@')) {
+      const query = lastWord.slice(1).toLowerCase();
+      return recentUsers.filter(u => u.toLowerCase().includes(query));
+    }
+    return [];
+  }, [input, recentUsers]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, activeChannel]);
+
+  useEffect(() => {
+    const lastWord = input.split(' ').pop() || '';
+    setShowTagSuggestions(lastWord.startsWith('@') && filteredTags.length > 0 && !!currentUser);
+  }, [input, filteredTags, currentUser]);
 
   const CHANNELS = [
     { id: 'general-market', name: 'General Market', icon: Hash, count: 1240, vip: false },
@@ -97,16 +120,14 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
       return;
     }
 
-    // Restriction: Member point deduction (10 points per message/reply/link)
+    // Restriction: Member point deduction
     if (currentUser) {
-      if (currentUser.points < 10) {
-        alert("Insufficient Nexus Points: Each transmission costs 10 Pts. Sync your daily bonus to continue.");
+      const cost = replyTo ? 15 : 10; // Extra cost for threading
+      if (currentUser.points < cost) {
+        alert(`Insufficient Nexus Points: This transmission costs ${cost} Pts. Sync your daily bonus to continue.`);
         return;
       }
-      
-      // Deduct points
-      const updatedUser = { ...currentUser, points: currentUser.points - 10 };
-      onUpdateUser(updatedUser);
+      onUpdateUser({ ...currentUser, points: currentUser.points - cost });
     }
 
     const newMessage: Message = {
@@ -118,7 +139,6 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
       avatarId: currentUser?.avatarId || 4,
       isPro: isPremium,
       isRegistered: !!currentUser,
-      pointsCost: 10,
       replyToId: replyTo?.id
     };
 
@@ -128,20 +148,29 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
     setReplyTo(null);
   };
 
+  const selectTagSuggestion = (user: string) => {
+    const words = input.split(' ');
+    words.pop();
+    setInput(words.join(' ') + (words.length > 0 ? ' ' : '') + '@' + user + ' ');
+    setShowTagSuggestions(false);
+    inputRef.current?.focus();
+  };
+
   const handleReply = (msg: Message) => {
     if (!currentUser) {
-      alert("Registration Required: The reply feature is reserved for registered members to maintain message threading integrity.");
+      alert("Registration Required: Replying is a restricted node feature.");
       return;
     }
     setReplyTo(msg);
+    inputRef.current?.focus();
   };
 
-  const handleTag = (user: string) => {
+  const toggleVoiceNode = () => {
     if (!currentUser) {
-      alert("Registration Required: Tagging users is an advanced node feature.");
+      alert("Registration Required: Join the Nexus network to enter Voice discuss nodes.");
       return;
     }
-    setInput(`@${user} ${input}`);
+    setIsVoiceActive(!isVoiceActive);
   };
 
   return (
@@ -182,29 +211,33 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
            </div>
         </div>
 
-        <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-4 bg-gradient-to-br from-indigo-500/5 to-transparent">
+        {/* Voice Hub Section */}
+        <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-4 bg-gradient-to-br from-blue-600/5 to-transparent">
            <div className="flex justify-between items-center">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">My Ledger</h3>
-              <Sparkles size={14} className="text-amber-500" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Voice Node</h3>
+              <div className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-green-500 animate-pulse' : 'bg-slate-700'}`}></div>
            </div>
-           <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5">
-              <div>
-                 <p className="text-[8px] text-slate-500 uppercase font-black">Nexus Points</p>
-                 <p className="text-xl font-orbitron font-bold text-white">{currentUser?.points || 0}</p>
-              </div>
-              <button className="p-2 bg-blue-600/10 rounded-lg text-blue-400 hover:bg-blue-600/20"><TrendingUp size={16}/></button>
-           </div>
-           <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-2">
-              <div className="flex items-center gap-2 text-[8px] font-black text-slate-500 uppercase">
-                <ShieldAlert size={10} className="text-amber-500" /> Node Stake Mode
-              </div>
-              <ul className="text-[9px] text-slate-400 space-y-1 italic">
-                <li className="text-amber-500 font-bold">• Transmission: -10 Pts</li>
-                <li>• Reply & Tags: -10 Pts</li>
-                <li>• Links & Mobiles: -10 Pts</li>
-                <li>• Guest Status: Text only</li>
-              </ul>
-           </div>
+           <button 
+             onClick={toggleVoiceNode}
+             className={`w-full py-4 rounded-2xl border flex items-center justify-center gap-3 transition-all ${
+               isVoiceActive 
+               ? 'bg-red-500/10 border-red-500/30 text-red-500' 
+               : 'bg-blue-600/10 border-blue-500/20 text-blue-500 hover:bg-blue-600/20'
+             }`}
+           >
+             {isVoiceActive ? <Mic size={18} /> : <Headset size={18} />}
+             <span className="text-xs font-black uppercase tracking-widest">
+               {isVoiceActive ? 'LEAVE VOICE' : 'JOIN VOICE NODE'}
+             </span>
+           </button>
+           {isVoiceActive && (
+             <div className="flex -space-x-2 overflow-hidden justify-center py-2 animate-in fade-in">
+               {[1,2,3].map(i => (
+                 <img key={i} src={`https://api.dicebear.com/7.x/avataaars/svg?seed=node${i}`} className="w-8 h-8 rounded-full border-2 border-black bg-slate-900" alt="Active" />
+               ))}
+               <div className="w-8 h-8 rounded-full border-2 border-black bg-slate-800 flex items-center justify-center text-[10px] font-black">+12</div>
+             </div>
+           )}
         </div>
       </aside>
 
@@ -217,7 +250,6 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
              <div>
                 <h2 className="font-orbitron font-bold text-lg tracking-tight flex items-center gap-2 uppercase">
                   {activeChannel.replace('-', ' ')}
-                  {activeChannel === 'vip-lounge' && <span className="text-[8px] bg-amber-500 text-black px-1.5 py-0.5 rounded font-black">ELITE</span>}
                 </h2>
                 <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_green]"></span>
@@ -242,7 +274,7 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
           {filteredMessages.map((m) => (
             <div key={m.id} className={`flex gap-4 group animate-in fade-in slide-in-from-bottom-2 ${m.user === currentUser?.nexusId ? 'flex-row-reverse' : ''}`}>
                <div className="shrink-0 relative">
-                  <img src={m.isBot ? `https://api.dicebear.com/7.x/bottts/svg?seed=nexus` : `https://picsum.photos/seed/user${m.avatarId}/40/40`} className="w-10 h-10 rounded-xl border border-white/10 shadow-lg" alt={m.user} />
+                  <img src={m.isBot ? `https://api.dicebear.com/7.x/bottts/svg?seed=nexus` : `https://api.dicebear.com/7.x/avataaars/svg?seed=user${m.avatarId}`} className="w-10 h-10 rounded-xl border border-white/10 shadow-lg" alt={m.user} />
                   {m.isPro && <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-[8px] text-black font-black border border-black"><Crown size={8}/></div>}
                   {m.isRegistered && !m.isPro && !m.isBot && <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center text-[8px] text-white font-black border border-black"><ShieldCheck size={8}/></div>}
                </div>
@@ -253,13 +285,14 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
                     <span className={`text-[10px] font-black uppercase tracking-widest ${m.isBot ? 'text-blue-400' : 'text-slate-500'}`}>
                       {m.user}
                     </span>
-                    <span className="text-[8px] text-slate-700 flex items-center gap-1">
-                      <Clock size={8}/> {m.time} &bull; {m.date}
+                    <span className="text-[8px] text-slate-700 flex items-center gap-1 opacity-60">
+                      <Clock size={8}/> {m.time}
                     </span>
                   </div>
 
                   {m.replyToId && (
-                    <div className="text-[10px] italic text-slate-500 bg-white/5 px-3 py-1 rounded-lg border-l-2 border-blue-500/30 mb-1 max-w-full truncate">
+                    <div className="text-[10px] italic text-slate-500 bg-white/5 px-3 py-1.5 rounded-xl border-l-2 border-blue-500/30 mb-1 max-w-full truncate flex items-center gap-2">
+                      <TrendingUp size={10} className="text-blue-500/50" />
                       Replying to: {messages.find(msg => msg.id === m.replyToId)?.text}
                     </div>
                   )}
@@ -270,24 +303,16 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
                     : m.isBot ? 'bg-blue-900/20 text-blue-100 rounded-tl-none border border-blue-500/20' 
                     : 'bg-white/5 text-slate-300 rounded-tl-none border border-white/5'
                   }`}>
-                    {m.text.includes('@') ? (
-                      m.text.split(' ').map((word, i) => (
-                        word.startsWith('@') ? <span key={i} className="text-amber-400 font-bold">{word} </span> : word + ' '
-                      ))
-                    ) : m.text}
+                    {m.text.split(' ').map((word, i) => (
+                      word.startsWith('@') ? <span key={i} className="text-amber-400 font-black">{word} </span> : word + ' '
+                    ))}
                     
                     <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ${m.user === currentUser?.nexusId ? 'left-[-80px]' : 'right-[-80px]'}`}>
                       <button 
                         onClick={() => handleReply(m)}
-                        className={`p-2 bg-black/40 rounded-lg text-[10px] font-black uppercase tracking-tighter hover:text-white ${!currentUser ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`p-2 bg-black/60 backdrop-blur-md rounded-lg text-[10px] font-black uppercase tracking-tighter hover:text-blue-400 text-slate-400 transition-colors shadow-xl ${!currentUser ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {currentUser ? 'Reply' : <Lock size={10} />}
-                      </button>
-                      <button 
-                        onClick={() => handleTag(m.user)}
-                        className={`p-2 bg-black/40 rounded-lg text-[10px] font-black uppercase tracking-tighter hover:text-white ${!currentUser ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <AtSign size={10} />
                       </button>
                     </div>
                   </div>
@@ -297,37 +322,59 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
         </div>
 
         {replyTo && (
-          <div className="mx-6 px-4 py-2 bg-blue-600/10 border-x border-t border-blue-500/20 rounded-t-xl flex items-center justify-between">
+          <div className="mx-6 px-4 py-3 bg-blue-600/10 border-x border-t border-blue-500/20 rounded-t-2xl flex items-center justify-between animate-in slide-in-from-bottom-2">
              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
                 <span className="text-[10px] font-black text-blue-400 uppercase">Replying to {replyTo.user}:</span>
                 <span className="text-[10px] text-slate-500 truncate italic">{replyTo.text}</span>
              </div>
-             <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
+             <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-white p-1"><X size={14}/></button>
           </div>
         )}
 
-        <div className="p-4 md:p-6 bg-black/40 border-t border-white/10 flex flex-col gap-4">
+        <div className="p-4 md:p-6 bg-black/40 border-t border-white/10 flex flex-col gap-4 relative">
+          {/* Tag Suggestions Dropdown */}
+          {showTagSuggestions && (
+            <div className="absolute bottom-full left-6 w-56 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl mb-2 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+              <div className="p-2 border-b border-white/5 bg-white/5">
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-2">Suggesting Nodes</span>
+              </div>
+              <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                {filteredTags.map(user => (
+                  <button 
+                    key={user}
+                    onClick={() => selectTagSuggestion(user)}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-between"
+                  >
+                    <span>@{user}</span>
+                    <Check size={10} className="opacity-0 group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4">
             <div className="flex-1 relative">
               <input 
+                ref={inputRef}
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={currentUser ? `Message in #${activeChannel}...` : "Public chat active (Text only)..."}
+                placeholder={currentUser ? `Type @ to tag nodes in #${activeChannel}...` : "Public chat active (Text only)..."}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500/50 pr-12 transition-all shadow-inner"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                  {currentUser && (
-                   <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                   <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg" title={replyTo ? "Reply: 15 Pts" : "Msg: 10 Pts"}>
                       <Coins size={12} className="text-amber-500" />
-                      <span className="text-[9px] font-black text-amber-500">10 Pts</span>
+                      <span className="text-[9px] font-black text-amber-500">{replyTo ? '15' : '10'} Pts</span>
                    </div>
                  )}
                  <button className={`text-slate-600 hover:text-blue-500 transition-colors ${!currentUser ? 'opacity-30 cursor-not-allowed' : ''}`} disabled={!currentUser}><Mic size={16} /></button>
                  <div className="w-px h-4 bg-white/10"></div>
                  <LinkIcon size={16} className={`${input.includes('http') ? 'text-amber-500' : 'text-slate-600'} ${!currentUser ? 'opacity-30' : ''}`} />
-                 <Phone size={14} className={`${!currentUser ? 'opacity-30' : 'text-slate-600'}`} />
               </div>
             </div>
             <button 
@@ -351,11 +398,11 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
             </div>
             {!currentUser ? (
               <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest flex items-center gap-2">
-                <Lock size={10} /> Text only for Guests
+                <Lock size={10} /> Links/Replies Restricted
               </p>
             ) : (
               <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest hidden sm:block">
-                Transmission costs 10 Nexus Pts
+                Replies cost +5 bonus Pts
               </p>
             )}
           </div>
@@ -364,16 +411,10 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
         <div className="p-3 bg-blue-600/10 text-center relative overflow-hidden border-t border-white/5">
            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_5s_infinite]" style={{ backgroundSize: '200% 100%' }}></div>
            <p className="text-[9px] text-blue-400 font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2 relative z-10">
-             <Sparkles size={10}/> Nexus Moderator V2.4 Active &bull; Encrypted Decentralized Stream
+             <Volume2 size={10}/> Global Voice Node Relay ACTIVE &bull; Decentralized Node {activeChannel.toUpperCase()}
            </p>
         </div>
       </div>
     </div>
   );
 };
-
-const X = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-  </svg>
-);
