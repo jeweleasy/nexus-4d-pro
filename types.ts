@@ -41,6 +41,16 @@ export interface LotteryResult {
   timestamp: number;
 }
 
+export interface User {
+  id: string;
+  nexusId: string;
+  email: string;
+  points: number;
+  isPremium: boolean;
+  registrationDate: string;
+  avatarId: number;
+}
+
 export interface StatisticalData {
   number: string;
   frequency: number;
@@ -77,7 +87,6 @@ export interface JackpotData {
   currency: string;
 }
 
-// Added missing LotteryNews interface used for news aggregation and visualization
 export interface LotteryNews {
   id: string;
   headline: string;

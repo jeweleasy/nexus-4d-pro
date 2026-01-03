@@ -41,7 +41,10 @@ import {
   Lock,
   Settings,
   ChevronUp,
-  Languages
+  Languages,
+  UserPlus,
+  LogIn,
+  Fingerprint
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -69,7 +72,9 @@ import { ArExperience } from './components/ArExperience';
 import { Heatmap } from './components/Heatmap';
 import { GamingTools } from './components/GamingTools';
 import { RankingSystem } from './components/RankingSystem';
-import { LotteryProvider, LotteryResult } from './types';
+import { RegistrationModal } from './components/RegistrationModal';
+import { LoginModal } from './components/LoginModal';
+import { LotteryProvider, LotteryResult, User } from './types';
 import { 
   DisclaimerPage, 
   PrivacyPolicy, 
@@ -103,10 +108,15 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'premium' } | null>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   
   const mainRef = useRef<HTMLDivElement>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('nexus_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -123,6 +133,13 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
   }, [favorites]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('nexus_user', JSON.stringify(currentUser));
+      setIsPremium(currentUser.isPremium);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (toast) {
@@ -194,6 +211,10 @@ const App: React.FC = () => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleUpdateUser = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
+  };
+
   const NavItem = ({ icon: Icon, label, id, badge }: { icon: any, label: string, id: View, badge?: string }) => (
     <button
       onClick={() => { setActiveView(id); setSidebarOpen(false); }}
@@ -235,6 +256,23 @@ const App: React.FC = () => {
       {verifyingResultId && <BlockchainVerification resultId={verifyingResultId} onClose={() => setVerifyingResultId(null)} />}
       <ProviderResultsModal result={selectedResult} onClose={() => setSelectedResult(null)} lang={lang} isFavorite={selectedResult ? isResultFavorite(selectedResult) : false} onToggleFavorite={selectedResult ? () => toggleFavorite(selectedResult) : undefined} onShare={selectedResult ? () => setSharingResult(selectedResult) : undefined} />
       <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />
+      
+      <LoginModal 
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        onLogin={(user) => {
+          setCurrentUser(user);
+          const isNew = user.points === 15;
+          setToast({ 
+            message: isNew ? `Node ${user.nexusId} Activated! Welcome Bonus: +15 Pts` : `Access Granted. Welcome back, Node ${user.nexusId}`, 
+            type: 'success' 
+          });
+        }}
+        onCreateId={() => {
+          // This link now effectively resets the modal to Stage 1 (Register)
+          setToast({ message: "Redirecting to Activation Channel", type: 'info' });
+        }}
+      />
 
       <aside className={`fixed inset-0 z-[160] md:static w-72 h-screen border-r border-slate-200 dark:border-white/5 p-6 flex flex-col gap-6 transition-transform duration-300 md:translate-x-0 bg-slate-50 dark:bg-[#050505] ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between">
@@ -267,7 +305,7 @@ const App: React.FC = () => {
                 <ArrowRight size={14} />
              </button>
            )}
-           <LoyaltySystem />
+           <LoyaltySystem currentUser={currentUser} onUpdateUser={handleUpdateUser} />
         </div>
       </aside>
 
@@ -290,8 +328,8 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-2 md:gap-4">
             <div className="hidden sm:flex items-center gap-2 mr-2 md:mr-4">
-                <div className={`h-2 w-2 rounded-full ${isPremium ? 'bg-amber-500 animate-pulse shadow-[0_0_8px_amber]' : 'bg-slate-500'}`}></div>
-                <span className="text-[10px] font-black uppercase text-slate-500">{isPremium ? 'Nexus Elite' : 'Standard Node'}</span>
+                <div className={`h-2 w-2 rounded-full ${isPremium ? 'bg-amber-500 animate-pulse shadow-[0_0_8px_amber]' : currentUser ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-slate-500'}`}></div>
+                <span className="text-[10px] font-black uppercase text-slate-500">{isPremium ? 'Nexus Elite' : currentUser ? 'Verified Node' : 'Guest Punter'}</span>
             </div>
             
             <div className="relative">
@@ -320,13 +358,26 @@ const App: React.FC = () => {
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2.5 rounded-xl glass border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-all">
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="flex items-center gap-3 glass p-1 md:p-1.5 rounded-2xl border border-white/5">
-                <img src={`https://picsum.photos/seed/${isPremium ? 'vip' : 'user'}/40/40`} className="w-8 h-8 rounded-xl border border-white/10" alt="Avatar" />
+
+            {currentUser ? (
+              <div className="flex items-center gap-3 glass p-1 md:p-1.5 rounded-2xl border border-white/5">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${currentUser.avatarId}`} className="w-8 h-8 rounded-xl border border-white/10" alt="Avatar" />
                 <div className="hidden md:block pr-2">
-                    <p className="text-[10px] font-black text-slate-900 dark:text-white leading-tight">{isPremium ? 'ELITE_MEMBER_01' : 'GUEST_USER'}</p>
-                    <p className="text-[8px] font-bold text-slate-500">ID: 4X-0294</p>
+                  <p className="text-[10px] font-black text-slate-900 dark:text-white leading-tight">{currentUser.nexusId}</p>
+                  <p className="text-[8px] font-bold text-slate-500">ID: {currentUser.id.substring(0, 8)}</p>
                 </div>
-            </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowLogin(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+                >
+                  <Fingerprint size={16} />
+                  Node Activation
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -386,9 +437,13 @@ const App: React.FC = () => {
           )}
 
           {activeView === 'premium' && <PremiumView isPremium={isPremium} onUpgrade={() => {
-            setIsPremium(true);
-            setToast({ message: "Welcome to Nexus Elite!", type: 'premium' });
-            setActiveView('dashboard');
+            if (currentUser) {
+              setCurrentUser({...currentUser, isPremium: true});
+              setToast({ message: "Welcome to Nexus Elite!", type: 'premium' });
+              setActiveView('dashboard');
+            } else {
+              setShowLogin(true);
+            }
           }} />}
           
           {activeView === 'admin' && (
@@ -406,7 +461,7 @@ const App: React.FC = () => {
              )
           )}
           
-          {activeView === 'community' && <CommunityChat />}
+          {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={handleUpdateUser} />}
           {activeView === 'challenges' && <RankingSystem />}
           {activeView === 'predictions' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

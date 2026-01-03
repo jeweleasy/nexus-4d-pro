@@ -1,7 +1,8 @@
 
 import React from 'react';
 
-export const NexusLogo: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: string }> = ({ size = 'md', className = '' }) => {
+// Added onClick prop to support navigation/actions when clicking the logo
+export const NexusLogo: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: string, onClick?: () => void }> = ({ size = 'md', className = '', onClick }) => {
   const dimensions = {
     sm: { box: 'w-8 h-8', font: 'text-lg' },
     md: { box: 'w-10 h-10', font: 'text-xl' },
@@ -9,7 +10,7 @@ export const NexusLogo: React.FC<{ size?: 'sm' | 'md' | 'lg', className?: string
   };
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-3 ${className}`} onClick={onClick}>
       <div className={`${dimensions[size].box} relative group`}>
         {/* Outer Glow Hexagon */}
         <div className="absolute inset-0 bg-blue-600 rounded-lg rotate-45 opacity-20 group-hover:opacity-40 transition-opacity blur-sm"></div>

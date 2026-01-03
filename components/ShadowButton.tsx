@@ -6,13 +6,16 @@ interface ShadowButtonProps {
   onClick?: () => void;
   className?: string;
   variant?: 'primary' | 'secondary' | 'gold';
+  // Add disabled prop to handle loading/disabled states across the app
+  disabled?: boolean;
 }
 
 export const ShadowButton: React.FC<ShadowButtonProps> = ({ 
   children, 
   onClick, 
   className = '', 
-  variant = 'primary' 
+  variant = 'primary',
+  disabled = false
 }) => {
   const variantStyles = {
     primary: 'bg-blue-600 border-blue-700 hover:bg-blue-500',
@@ -23,11 +26,13 @@ export const ShadowButton: React.FC<ShadowButtonProps> = ({
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={`
         relative px-6 py-2 rounded-lg border-b-4 
         active:border-b-0 active:translate-y-[4px] 
         transition-all duration-100 shadow-lg 
         ${variantStyles[variant]} ${className}
+        ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
       `}
     >
       {children}
