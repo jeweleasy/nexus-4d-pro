@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Mail, Fingerprint, Lock, ShieldCheck, User, Loader2, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Zap, RefreshCcw, ShieldAlert, KeyRound } from 'lucide-react';
+import { X, Mail, Fingerprint, Lock, ShieldCheck, User, Loader2, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Zap, RefreshCw, ShieldAlert, KeyRound } from 'lucide-react';
 import { ShadowButton } from './ShadowButton';
 import { NexusLogo } from './NexusLogo';
 import { User as NexusUser } from '../types';
@@ -20,7 +20,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('nexus_remember_flag') === 'true';
+  });
   
   const t = LANGUAGES[lang];
 
@@ -45,14 +47,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
   useEffect(() => {
     if (isOpen) {
       generateCaptcha();
+      // Handle "Remember Me" pre-fill
+      const rememberedId = localStorage.getItem('nexus_remembered_id');
+      if (rememberedId) {
+        setFormData(prev => ({ ...prev, nexusId: rememberedId }));
+        // If there's a remembered ID, usually we want to start on the Login stage
+        setStage(2);
+      }
     } else {
+      // Don't reset nexusId if rememberMe is true, so it stays for next open
+      setFormData(prev => ({
+        ...prev,
+        name: '',
+        email: '',
+        pin: ['', '', '', ''],
+        nexusId: rememberMe ? prev.nexusId : ''
+      }));
       setStage(1);
       setView('form');
       setError(null);
       setShake(false);
-      setFormData({ name: '', email: '', nexusId: '', pin: ['', '', '', ''] });
     }
-  }, [isOpen]);
+  }, [isOpen, rememberMe]);
 
   if (!isOpen) return null;
 
@@ -74,7 +90,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
+    // UI/Logic Validation
     if (stage === 1 && !formData.name.trim()) return triggerError("Operator Name required");
     if (stage === 1 && !validateEmail(formData.email)) return triggerError("Invalid Network Email");
     if (!formData.nexusId.trim()) return triggerError("Unique Node ID required");
@@ -88,14 +104,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
     setError(null);
     setShake(false);
 
-    // Simulated node synchronization logic
+    // Simulated node synchronization with specific error logic
     setTimeout(() => {
-      // Simulation: certain IDs fail for demo purposes
-      const isLoginError = stage === 2 && (formData.nexusId === 'error');
+      // Mock specific error scenarios for demo
+      const idNotFound = stage === 2 && formData.nexusId.toLowerCase().includes('unknown');
+      const pinMismatch = stage === 2 && formData.pin.join('') === '0000';
       
-      if (isLoginError) {
+      if (idNotFound) {
         setLoading(false);
-        triggerError("Invalid ID or Password Cluster");
+        triggerError("Node identifier not found in Nexus Directory");
+        generateCaptcha();
+      } else if (pinMismatch) {
+        setLoading(false);
+        triggerError("Neural PIN integrity mismatch. Access denied.");
         generateCaptcha();
       } else {
         const loggedUser: NexusUser = {
@@ -108,8 +129,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
           avatarId: Math.floor(Math.random() * 10) + 1
         };
         
+        // Save "Remember Me" preference
         if (rememberMe) {
           localStorage.setItem('nexus_remembered_id', formData.nexusId);
+          localStorage.setItem('nexus_remember_flag', 'true');
+        } else {
+          localStorage.removeItem('nexus_remembered_id');
+          localStorage.setItem('nexus_remember_flag', 'false');
         }
         
         onLogin(loggedUser);
@@ -127,12 +153,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
 
   const handleForgotPin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateEmail(formData.email)) return triggerError("Valid email required for reset");
+    if (!validateEmail(formData.email)) {
+      return triggerError("Valid registration email required for recovery handshake");
+    }
     setLoading(true);
+    setError(null);
+    
+    // Simulate recovery link transmission
     setTimeout(() => {
       setLoading(false);
       setView('reset-success');
-    }, 1500);
+    }, 2000);
+  };
+
+  const toggleRememberMe = () => {
+    setRememberMe(!rememberMe);
   };
 
   if (view === 'forgot-pin') {
@@ -145,25 +180,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
                 <KeyRound className="text-blue-500" size={32} />
              </div>
              <h3 className="text-xl font-orbitron font-bold">PIN Recovery</h3>
-             <p className="text-xs text-slate-500">Enter your registered email to receive a secure handshake link.</p>
+             <p className="text-xs text-slate-500">Node verification required. Enter your registered email to receive a recovery code.</p>
            </div>
            <form onSubmit={handleForgotPin} className="space-y-6">
-              <div className="relative">
-                <input 
-                  required 
-                  type="email" 
-                  placeholder="operator@nexus.ai"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-4 text-sm focus:outline-none focus:border-blue-500/50"
-                />
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest px-1">Registered Email</label>
+                <div className="relative">
+                  <input 
+                    required 
+                    type="email" 
+                    placeholder="operator@nexus.ai"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-4 text-sm focus:outline-none focus:border-blue-500/50"
+                  />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
+                </div>
               </div>
+              
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="text-red-500 shrink-0" size={14} />
+                  <p className="text-[10px] font-bold text-red-200">{error}</p>
+                </div>
+              )}
+
               <ShadowButton variant="primary" className="w-full py-4 flex items-center justify-center gap-2" disabled={loading}>
                  {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-                 {loading ? 'TRANSMITTING...' : 'SEND RESET LINK'}
+                 {loading ? 'TRANSMITTING RECOVERY...' : 'SEND RECOVERY SIGNAL'}
               </ShadowButton>
-              <button type="button" onClick={() => setView('form')} className="w-full text-[10px] font-black uppercase text-slate-500 hover:text-white tracking-widest">Return to Base</button>
+              
+              <button 
+                type="button" 
+                onClick={() => setView('form')} 
+                className="w-full text-[10px] font-black uppercase text-slate-500 hover:text-white tracking-widest transition-colors"
+              >
+                Cancel Handshake
+              </button>
            </form>
         </div>
       </div>
@@ -178,9 +231,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border border-green-500/20">
               <CheckCircle2 className="text-green-500" size={40} />
            </div>
-           <h3 className="text-2xl font-orbitron font-bold">Transmission Sent</h3>
-           <p className="text-sm text-slate-400">Check your neural mail for the 4-digit reset protocol.</p>
-           <ShadowButton variant="primary" onClick={() => setView('form')} className="w-full py-4">BACK TO LOGIN</ShadowButton>
+           <h3 className="text-2xl font-orbitron font-bold">Signal Transmitted</h3>
+           <p className="text-sm text-slate-400">Check your neural mail (Inbox) for the secure recovery link to reset your 4-digit PIN.</p>
+           <ShadowButton variant="primary" onClick={() => setView('form')} className="w-full py-4">RETURN TO BASE</ShadowButton>
         </div>
       </div>
     );
@@ -197,7 +250,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
           <div className="flex flex-col items-center gap-3 text-center">
             <NexusLogo size="md" />
             <div>
-              <h3 className="text-xl font-orbitron font-bold">{t.common.activation}</h3>
+              <h3 className="text-xl font-orbitron font-bold">{stage === 1 ? t.common.activation : t.common.login}</h3>
               <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                 {stage === 1 ? 'Establish Neural Identity' : 'Secure Handshake Protocol'}
               </p>
@@ -285,24 +338,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
                   className="w-16 bg-black/40 border border-white/10 rounded-lg py-1 px-2 text-center text-xs focus:outline-none focus:border-blue-500"
                 />
                 <button type="button" onClick={generateCaptcha} className="text-slate-600 hover:text-white transition-colors">
-                  <RefreshCcw size={12} />
+                  <RefreshCw size={12} />
                 </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between px-1">
               <label className="flex items-center gap-2 cursor-pointer group">
-                <div className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${rememberMe ? 'bg-blue-600 border-blue-500' : 'border-white/20 group-hover:border-white/40'}`}>
+                <div 
+                  onClick={toggleRememberMe}
+                  className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${rememberMe ? 'bg-blue-600 border-blue-500' : 'border-white/20 group-hover:border-white/40'}`}
+                >
                   {rememberMe && <CheckCircle2 size={12} className="text-white" />}
                 </div>
-                <input type="checkbox" className="hidden" checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Remember Node</span>
+                <input type="checkbox" className="hidden" checked={rememberMe} readOnly />
+                <span onClick={toggleRememberMe} className="text-[9px] font-bold text-slate-500 uppercase tracking-wider select-none">Remember Node</span>
               </label>
               
               <div className="flex flex-col items-end gap-1">
                 <button 
                   type="button" 
-                  onClick={() => setStage(stage === 1 ? 2 : 1)} 
+                  onClick={() => { setStage(stage === 1 ? 2 : 1); setError(null); }} 
                   className="text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300 transition-colors"
                 >
                   {stage === 1 ? t.common.login : t.common.activation}
