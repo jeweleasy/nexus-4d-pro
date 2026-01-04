@@ -2,10 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export class PredictionService {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  private get ai() {
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async chatWithAssistant(history: {role: 'user' | 'model', text: string}[], currentInput: string) {
@@ -26,6 +24,7 @@ export class PredictionService {
       });
       return response.text || "I'm processing the nexus streams. Please repeat.";
     } catch (error) {
+      console.error("Assistant Error:", error);
       return "Connectivity to the AI Core is intermittent. Please try again.";
     }
   }
@@ -54,6 +53,7 @@ export class PredictionService {
       });
       return JSON.parse(response.text || '{"number": "7777", "fortune": "The stars align for your path."}');
     } catch (error) {
+      console.error("Lucky Engine Error:", error);
       return { number: "8888", fortune: "Universal entropy suggests a balanced pick." };
     }
   }
@@ -107,15 +107,17 @@ export class PredictionService {
     }
   }
 
-  async generateLuckyNumber() {
-    return this.generatePersonalizedLucky({});
-  }
-
   async getNewsAggregated() {
     try {
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Generate 4 realistic lottery-related news articles. Format as JSON.`,
+        contents: `Aggregate 5 news articles related to 4D Lottery, Gaming Industry, and Jackpot winners in Malaysia.
+        Sources MUST strictly be chosen from: 
+        English: [The Star, New Straits Times (NST), The Edge, Malay Mail, Free Malaysia Today, Malaysiakini]
+        Malay: [Berita Harian, Harian Metro, Utusan Malaysia, Kosmo!]
+        Chinese: [Sin Chew Daily, China Press, Nanyang Siang Pau, Oriental Daily News]
+        
+        Ensure articles capture Malaysian context. Return JSON.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -132,6 +134,7 @@ export class PredictionService {
                     pageNumber: { type: Type.STRING },
                     category: { type: Type.STRING },
                     date: { type: Type.STRING },
+                    sourceLink: { type: Type.STRING },
                     imagePrompt: { type: Type.STRING }
                   }
                 }
@@ -140,8 +143,10 @@ export class PredictionService {
           }
         }
       });
-      return JSON.parse(response.text || '{"news": []}');
+      const data = JSON.parse(response.text || '{"news": []}');
+      return data;
     } catch (error) {
+      console.error("News Aggregator Error:", error);
       return null;
     }
   }
@@ -151,7 +156,7 @@ export class PredictionService {
       const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
-          parts: [{ text: `Professional corporate visualization: ${prompt}. Cinematic lighting.` }]
+          parts: [{ text: `High-resolution editorial abstract photo for a Malaysian newspaper. Subject: ${prompt}. Cinematic lighting, depth of field, vibrant colors of Kuala Lumpur or urban architecture. STRICTLY NO IDENTIFIABLE HUMAN FACES to protect privacy. Journalistic aesthetic.` }]
         },
         config: { imageConfig: { aspectRatio: "16:9" } }
       });
@@ -160,6 +165,7 @@ export class PredictionService {
       }
       return null;
     } catch (error) {
+      console.error("Image Generator Error:", error);
       return null;
     }
   }
@@ -191,6 +197,7 @@ export class PredictionService {
       });
       return JSON.parse(response.text || '{"predictions": []}');
     } catch (error) {
+      console.error("Predictor Error:", error);
       return { predictions: [] };
     }
   }

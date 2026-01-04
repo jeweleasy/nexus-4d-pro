@@ -95,6 +95,7 @@ export interface LotteryNews {
   pageNumber: string;
   date: string;
   category: string;
+  sourceLink?: string;
   imagePrompt?: string;
   imageUrl?: string;
 }

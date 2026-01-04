@@ -82,21 +82,33 @@ export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
 export const MOCK_NEWS: LotteryNews[] = [
   {
     id: '1',
-    headline: 'Nexus AI Predicts Record Jackpot Surge',
-    summary: 'Our pattern analysis engines indicate a significant uptick in regional jackpot accumulations.',
-    paperName: 'Nexus Finance',
-    pageNumber: 'A1',
+    headline: 'The Edge: Malaysia Gaming Sector Poised for Recovery in Q4 2024.',
+    summary: 'The Edge Financial analysis suggests that the relaxation of tourism barriers and increased consumer confidence in urban Malaysia are driving significant traffic back to legal 4D outlets. National treasury contributions are projected to rise by 4.2% YoY.',
+    paperName: 'The Edge',
+    pageNumber: 'B12',
     date: getRelativeDate(0),
-    category: 'Jackpot'
+    category: 'Market',
+    sourceLink: 'https://www.theedgemarkets.com/article/gaming'
   },
   {
     id: '2',
-    headline: 'Real-Time Aggregation Latency Reduced to 0.5ms',
-    summary: 'Nexus Pro developers successfully implemented new WebSocket clusters for faster draw broadcasting.',
-    paperName: 'Tech Insider',
-    pageNumber: 'B4',
+    headline: 'Berita Harian: Pemenang Jackpot RM15 Juta Dari Ipoh Tuntut Hadiah.',
+    summary: 'Seorang pesara dari Ipoh telah menuntut hadiah utama Magnum Jackpot bernilai RM15 juta. Beliau menyatakan bahawa nombor pilihannya adalah berdasarkan tarikh perkahwinan anak-anaknya. Beliau berhasrat untuk menyumbang sebahagian daripada kemenangan tersebut kepada rumah kebajikan tempatan.',
+    paperName: 'Berita Harian',
+    pageNumber: 'MS 4',
     date: getRelativeDate(1),
-    category: 'Market'
+    category: 'Jackpot',
+    sourceLink: 'https://www.bharian.com.my/berita/nasional'
+  },
+  {
+    id: '3',
+    headline: 'Sin Chew Daily: 数字化如何改变马来西亚博彩体验？',
+    summary: '随着智能手机的普及，马来西亚各大博彩公司正加速其APP的功能升级。专家在《星洲日报》专访中指出，实时开奖结果与大数据分析功能的集成，已成为吸引年轻一代玩家的关键因素。Nexus Pro被评为年度最佳数据同步引擎。',
+    paperName: 'Sin Chew Daily',
+    pageNumber: 'A18',
+    date: getRelativeDate(2),
+    category: 'Regulatory',
+    sourceLink: 'https://www.sinchew.com.my/category/business'
   }
 ];
 
@@ -134,6 +146,7 @@ export const LANGUAGES = {
       coldNumbers: 'Low Trace',
       normalNumbers: 'Normal',
       upgrade: 'UPGRADE TO ELITE',
+      guestRestriction: 'please node activation-register then reply and link share',
     },
     prizes: {
       first: '1st Prize',
@@ -179,6 +192,7 @@ export const LANGUAGES = {
       coldNumbers: '冷门',
       normalNumbers: '正常',
       upgrade: '升级至精英版',
+      guestRestriction: '请激活节点注册后，再进行回复和链接分享',
     },
     prizes: {
       first: '头奖',
@@ -224,6 +238,7 @@ export const LANGUAGES = {
       coldNumbers: 'Jejak Rendah',
       normalNumbers: 'Normal',
       upgrade: 'NAIK TARAF KE ELITE',
+      guestRestriction: 'Sila lakukan pendaftaran pengaktifan node untuk membalas dan berkongsi pautan',
     },
     prizes: {
       first: 'Hadiah Pertama',

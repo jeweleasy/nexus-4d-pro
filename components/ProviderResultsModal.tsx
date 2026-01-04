@@ -9,15 +9,19 @@ interface ProviderResultsModalProps {
   result: LotteryResult | null;
   onClose: () => void;
   lang: 'EN' | 'CN' | 'MY';
+  isLoggedIn?: boolean;
+  onGuestAttempt?: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
-  onShare?: () => void;
+  onShare?: (e: React.MouseEvent) => void;
 }
 
 export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({ 
   result, 
   onClose, 
   lang,
+  isLoggedIn = false,
+  onGuestAttempt,
   isFavorite = false,
   onToggleFavorite,
   onShare
@@ -39,9 +43,13 @@ export const ProviderResultsModal: React.FC<ProviderResultsModalProps> = ({
     }
   };
 
-  const handleShare = () => {
+  const handleShare = (e: React.MouseEvent) => {
+    if (!isLoggedIn && onGuestAttempt) {
+      onGuestAttempt();
+      return;
+    }
     if (onShare) {
-      onShare();
+      onShare(e);
       setJustShared(true);
       setTimeout(() => setJustShared(false), 2000);
     }

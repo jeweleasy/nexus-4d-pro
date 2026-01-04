@@ -67,7 +67,7 @@ export const LuckyNumber: React.FC<LuckyNumberProps> = ({ lang, heatmapData }) =
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-orbitron font-bold text-white flex items-center gap-3">
           <div className="nexus-line nexus-line-amber"></div>
-          {t.common.luckyNumber}
+          {t?.common?.luckyNumber || 'Nexus Luck Engine'}
         </h3>
         <div className="flex items-center gap-1">
           <button onClick={() => setShowConfig(!showConfig)} className={`p-2 rounded-xl transition-all ${showConfig ? 'bg-amber-500/20 text-amber-400' : 'hover:bg-white/5 text-slate-500'}`}>
@@ -138,7 +138,7 @@ export const LuckyNumber: React.FC<LuckyNumberProps> = ({ lang, heatmapData }) =
                       {lookupResults.map((res, i) => (
                          <div key={i} className="bg-white/5 p-2 rounded-lg border border-white/5 text-center">
                             <p className="text-[7px] text-slate-600 font-black uppercase mb-1">P{i+1}</p>
-                            <p className="text-[10px] font-bold text-blue-400">{res?.freq}%</p>
+                            <p className="text-[10px] font-bold text-blue-400">{res?.freq || 0}%</p>
                          </div>
                       ))}
                    </div>
@@ -170,7 +170,6 @@ export const LuckyNumber: React.FC<LuckyNumberProps> = ({ lang, heatmapData }) =
               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Neural Link Offline</span>
             </div>
           )}
-          {/* Subtle scanning effect */}
           {analyzing && <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/5 to-transparent h-1 animate-[scan-line_1s_infinite_linear]"></div>}
         </div>
 

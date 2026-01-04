@@ -4,7 +4,8 @@ import {
   MessageCircle, Send, User, ShieldCheck, Sparkles, Hash, Users, 
   Activity, TrendingUp, Info, Search, Crown, Lock, Link as LinkIcon,
   Clock, Calendar, MessageSquare, Mic, ShieldAlert, Bot, AtSign,
-  Phone, Coins, Volume2, Headset, X, Check, Filter, AlertCircle, Trash2, Flag
+  Phone, Coins, Volume2, Headset, X, Check, Filter, AlertCircle, Trash2, Flag,
+  CornerDownRight, History
 } from 'lucide-react';
 import { predictionService } from '../services/geminiService';
 import { User as NexusUser } from '../types';
@@ -13,6 +14,7 @@ interface CommunityChatProps {
   isPremium?: boolean;
   currentUser: NexusUser | null;
   onUpdateUser: (updatedUser: NexusUser) => void;
+  onGuestAttempt?: () => void;
 }
 
 interface Message {
@@ -30,14 +32,12 @@ interface Message {
   tags?: string[];
 }
 
-export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false, currentUser, onUpdateUser }) => {
+export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false, currentUser, onUpdateUser, onGuestAttempt }) => {
   const [activeChannel, setActiveChannel] = useState('general-market');
   const [searchQuery, setSearchQuery] = useState('');
   const [input, setInput] = useState('');
-  const [isLoadingBot, setIsLoadingBot] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -77,15 +77,6 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
     setShowTagSuggestions(lastWord.startsWith('@') && filteredTags.length > 0 && !!currentUser);
   }, [input, filteredTags, currentUser]);
 
-  const CHANNELS = [
-    { id: 'general-market', name: 'General Market', icon: Hash, count: 1240, vip: false },
-    { id: 'magnum-4d', name: 'Magnum 4D', icon: Hash, count: 850, vip: false },
-    { id: 'toto-4d', name: 'Sports Toto', icon: Hash, count: 420, vip: false },
-    { id: 'damacai', name: 'Da Ma Cai', icon: Hash, count: 310, vip: false },
-    { id: 'sg-pools', name: 'Singapore Pools', icon: Hash, count: 290, vip: false },
-    { id: 'vip-lounge', name: 'Elite Prediction Hub', icon: Crown, count: 150, vip: true },
-  ];
-
   const filteredMessages = useMemo(() => {
     if (!searchQuery.trim()) return messages;
     return messages.filter(m => 
@@ -95,34 +86,44 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
   }, [messages, searchQuery]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    const hasLink = /http|www|\.com|\.ai|\.my/gi.test(input);
-    if (hasLink && !currentUser) {
-      alert("Registration Required: Sharing links is restricted to verified nodes.");
+    if (!currentUser) {
+      if (onGuestAttempt) onGuestAttempt();
       return;
     }
-    if (currentUser) {
-      const cost = replyTo ? 15 : 10;
-      if (currentUser.points < cost) {
-        alert(`Insufficient Points: Required ${cost} Pts.`);
-        return;
-      }
-      onUpdateUser({ ...currentUser, points: currentUser.points - cost });
+    
+    if (!input.trim()) return;
+    
+    const cost = replyTo ? 15 : 10;
+    if (currentUser.points < cost) {
+      alert(`Insufficient Points: Required ${cost} Pts for this handshake.`);
+      return;
     }
+    onUpdateUser({ ...currentUser, points: currentUser.points - cost });
+
     const newMessage: Message = {
       id: 'msg-' + Date.now(),
-      user: currentUser?.nexusId || 'Guest_' + Math.floor(Math.random() * 999),
+      user: currentUser.nexusId,
       text: input,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       date: new Date().toISOString().split('T')[0],
-      avatarId: currentUser?.avatarId || Math.floor(Math.random() * 10) + 1,
+      avatarId: currentUser.avatarId,
       isPro: isPremium,
-      isRegistered: !!currentUser,
+      isRegistered: true,
       replyToId: replyTo?.id
     };
+
     setMessages(prev => [...prev, newMessage]);
     setInput('');
     setReplyTo(null);
+  };
+
+  const handleReplyClick = (m: Message) => {
+    if (!currentUser) {
+      if (onGuestAttempt) onGuestAttempt();
+      return;
+    }
+    setReplyTo(m);
+    inputRef.current?.focus();
   };
 
   const selectTagSuggestion = (user: string) => {
@@ -133,138 +134,95 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
     inputRef.current?.focus();
   };
 
-  const handleReply = (msg: Message) => {
-    if (!currentUser) {
-      alert("Verified Handshake required for linking.");
-      return;
-    }
-    setReplyTo(msg);
-    inputRef.current?.focus();
-  };
-
-  const handleReport = (msg: Message) => {
-    if (!currentUser) return;
-    alert(`Node ${msg.user} reported. Kernel Moderation cycle initiated.`);
-    const reports = JSON.parse(localStorage.getItem('nexus_moderation_queue') || '[]');
-    localStorage.setItem('nexus_moderation_queue', JSON.stringify([...reports, { ...msg, reportedBy: currentUser.nexusId, reportTime: Date.now() }]));
-  };
-
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)] animate-in fade-in slide-in-from-bottom-6 duration-700">
       <aside className="w-full lg:w-72 flex flex-col gap-6 shrink-0">
-        <div className="glass p-5 rounded-[2rem] border border-white/5 space-y-4">
-           <div className="flex items-center justify-between px-2 mb-2">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Channels</h3>
-              <div className="flex items-center gap-1 text-[9px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-full">
-                <Users size={10}/> {CHANNELS.find(c => c.id === activeChannel)?.count}
-              </div>
+        <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-4">
+           <div className="flex justify-between items-center mb-2">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Archival Search</h3>
+              <History size={12} className="text-slate-600" />
            </div>
-           <div className="space-y-1">
-             {CHANNELS.map((chan) => (
-               <button 
-                 key={chan.id}
-                 onClick={() => {
-                   if (chan.vip && !isPremium) {
-                     alert("Nexus Elite status required.");
-                     return;
-                   }
-                   setActiveChannel(chan.id);
-                 }}
-                 className={`w-full flex items-center justify-between p-3 rounded-xl transition-all relative overflow-hidden group ${
-                   activeChannel === chan.id ? 'bg-blue-600/10 border border-blue-500/20 text-blue-400' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-                 }`}
-               >
-                 <div className="flex items-center gap-3 z-10">
-                   <chan.icon size={16} className={activeChannel === chan.id ? 'text-blue-500' : ''} />
-                   <span className="text-xs font-bold">{chan.name}</span>
-                 </div>
-                 {chan.vip && !isPremium && <Lock size={12} className="text-slate-700 z-10" />}
-                 {activeChannel === chan.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>}
-               </button>
-             ))}
+           <div className="relative group">
+              <input 
+                type="text" 
+                placeholder="Search 7-day cache..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-10 py-3 text-xs focus:outline-none focus:border-blue-500/50"
+              />
+              <Search size={16} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${searchQuery ? 'text-blue-500' : 'text-slate-600'}`} />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                  <X size={14} />
+                </button>
+              )}
            </div>
+           {searchQuery && (
+             <p className="text-[9px] text-blue-400 font-bold animate-pulse">Filtering signals: {filteredMessages.length} matches found</p>
+           )}
         </div>
-        <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-4 bg-gradient-to-br from-blue-600/5 to-transparent">
-           <div className="flex justify-between items-center">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Voice Nodes</h3>
-              <div className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-green-500 animate-pulse' : 'bg-slate-700'}`}></div>
-           </div>
-           <button 
-             onClick={() => currentUser ? setIsVoiceActive(!isVoiceActive) : alert("Join network to access voice nodes.")}
-             className={`w-full py-4 rounded-2xl border flex items-center justify-center gap-3 transition-all ${
-               isVoiceActive ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-blue-600/10 border-blue-500/20 text-blue-500 hover:bg-blue-600/20'
-             }`}
-           >
-             {isVoiceActive ? <Mic size={18} /> : <Headset size={18} />}
-             <span className="text-xs font-black uppercase tracking-widest">{isVoiceActive ? 'Leave Relay' : 'Connect Voice'}</span>
-           </button>
+
+        <div className="glass p-5 rounded-[2rem] border border-white/5 space-y-2 flex-1 overflow-y-auto custom-scrollbar">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 px-2 mb-4">Clusters</h3>
+           {['General Market', 'Magnum 4D', 'Sports Toto', 'Elite Predictors'].map((chan) => (
+             <button 
+               key={chan}
+               onClick={() => setActiveChannel(chan.toLowerCase().replace(' ', '-'))}
+               className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                 activeChannel === chan.toLowerCase().replace(' ', '-') ? 'bg-blue-600/10 border border-blue-500/20 text-blue-400' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+               }`}
+             >
+               <Hash size={14} />
+               <span className="text-xs font-bold">{chan}</span>
+             </button>
+           ))}
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col glass rounded-[2.5rem] border border-white/10 overflow-hidden relative shadow-2xl">
-        <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
           <div className="flex items-center gap-4">
-             <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-500">
-                {CHANNELS.find(c => c.id === activeChannel)?.vip ? <Crown size={20}/> : <MessageSquare size={20} />}
+             <div className="p-2.5 bg-blue-600/10 rounded-xl text-blue-500">
+                <MessageSquare size={18} />
              </div>
              <div>
-                <h2 className="font-orbitron font-bold text-lg uppercase">#{activeChannel.replace('-', ' ')}</h2>
-                <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
-                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                   Synchronization Active
-                </div>
+                <h2 className="font-orbitron font-bold text-sm uppercase">#{activeChannel}</h2>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Global Intelligence Relay</p>
              </div>
-          </div>
-          <div className="relative flex-1 max-w-xs group">
-            <input 
-              type="text" 
-              placeholder="Search cache..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-10 py-2.5 text-xs focus:outline-none focus:border-blue-500/50"
-            />
-            <Search size={16} className={`absolute left-3.5 top-1/2 -translate-y-1/2 ${searchQuery ? 'text-blue-500' : 'text-slate-600'}`} />
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar scroll-smooth">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           {filteredMessages.map((m) => {
             const isOwner = m.user === currentUser?.nexusId;
             const parentMsg = m.replyToId ? messages.find(msg => msg.id === m.replyToId) : null;
             return (
-              <div key={m.id} className={`flex gap-4 group animate-in fade-in slide-in-from-bottom-2 ${isOwner ? 'flex-row-reverse' : ''}`}>
-                 <div className="shrink-0 relative">
-                    <img src={m.isBot ? `https://api.dicebear.com/7.x/bottts/svg?seed=nexus` : `https://api.dicebear.com/7.x/avataaars/svg?seed=user${m.avatarId}`} className="w-11 h-11 rounded-2xl border border-white/10 shadow-lg" alt={m.user} />
-                    {m.isPro && <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center text-[8px] text-black font-black border-2 border-[#050505] shadow-lg"><Crown size={10}/></div>}
-                 </div>
-                 <div className={`flex flex-col gap-1.5 max-w-[85%] sm:max-w-[75%] ${isOwner ? 'items-end' : ''}`}>
-                    <div className={`flex items-center gap-3 ${isOwner ? 'flex-row-reverse' : ''}`}>
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${m.isBot ? 'text-blue-400' : 'text-slate-500'}`}>{m.user}</span>
-                      <span className="text-[8px] text-slate-700 font-bold opacity-60">{m.time}</span>
+              <div key={m.id} className={`flex gap-4 group ${isOwner ? 'flex-row-reverse' : ''}`}>
+                 <img src={m.isBot ? `https://api.dicebear.com/7.x/bottts/svg?seed=nexus` : `https://api.dicebear.com/7.x/avataaars/svg?seed=user${m.avatarId}`} className="w-10 h-10 rounded-xl border border-white/10 shadow-lg bg-white/5 shrink-0" alt={m.user} />
+                 <div className={`flex flex-col gap-1.5 max-w-[80%] ${isOwner ? 'items-end' : ''}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${m.isBot ? 'text-blue-400' : m.isRegistered ? 'text-slate-300' : 'text-slate-500 italic'}`}>{m.user}</span>
+                      <span className="text-[8px] text-slate-700 font-bold">{m.time}</span>
                     </div>
+
                     {parentMsg && (
-                      <div className={`text-[10px] text-slate-500 bg-white/5 px-4 py-2 rounded-2xl border-l-4 border-blue-500/40 mb-1 max-w-full italic ${isOwner ? 'mr-2' : 'ml-2'}`}>
-                        "{parentMsg.text}"
+                      <div className="text-[9px] text-slate-500 bg-white/5 px-3 py-1.5 rounded-xl border-l-2 border-blue-500/40 italic flex items-center gap-2 max-w-full truncate">
+                        <CornerDownRight size={10} />
+                        Replying to @{parentMsg.user}: "{parentMsg.text.substring(0, 20)}..."
                       </div>
                     )}
-                    <div className={`relative px-5 py-3.5 rounded-3xl text-sm leading-relaxed shadow-sm transition-all group/msg ${
-                      isOwner ? 'bg-blue-600 text-white rounded-tr-none' 
-                      : m.isBot ? 'bg-blue-900/20 text-blue-100 rounded-tl-none border border-blue-500/20' 
-                      : 'bg-white/5 text-slate-300 rounded-tl-none border border-white/5 group-hover:border-white/10'
+
+                    <div className={`px-4 py-3 rounded-2xl text-xs leading-relaxed shadow-sm group-hover:border-white/20 border border-transparent transition-all ${
+                      isOwner ? 'bg-blue-600 text-white rounded-tr-none' : m.isBot ? 'bg-blue-900/20 text-blue-100 rounded-tl-none' : 'bg-white/5 text-slate-300 rounded-tl-none'
                     }`}>
                       {m.text.split(' ').map((word, i) => (
                         word.startsWith('@') ? <span key={i} className="text-amber-400 font-black">{word} </span> : word + ' '
                       ))}
-                      <div className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover/msg:opacity-100 transition-all flex gap-1 ${isOwner ? 'left-[-120px]' : 'right-[-120px]'}`}>
-                        <button onClick={() => handleReply(m)} className="p-2 bg-black/80 backdrop-blur-xl rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-blue-500 border border-white/10 flex items-center gap-1.5">
-                          {currentUser ? 'Reply' : <Lock size={10} />}
-                        </button>
-                        {!m.isBot && !isOwner && currentUser && (
-                           <button onClick={() => handleReport(m)} className="p-2 bg-black/80 backdrop-blur-xl rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-red-500 border border-white/10">
-                              <Flag size={12} />
-                           </button>
-                        )}
-                      </div>
+                    </div>
+
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-3">
+                       <button onClick={() => handleReplyClick(m)} className="text-[8px] font-black uppercase text-blue-500 hover:underline">Reply (15 Pts)</button>
+                       {!isOwner && <button className="text-[8px] font-black uppercase text-red-500/50 hover:text-red-500">Report</button>}
                     </div>
                  </div>
               </div>
@@ -272,29 +230,26 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
           })}
         </div>
 
-        <div className="p-4 md:p-8 bg-black/40 border-t border-white/10 relative">
+        <div className="p-4 bg-black/40 border-t border-white/10 relative">
           {replyTo && (
-            <div className="absolute bottom-full left-8 right-8 px-5 py-3 bg-blue-600/10 border-x border-t border-blue-500/30 rounded-t-[1.5rem] flex items-center justify-between animate-in slide-in-from-bottom-2 z-10">
-               <span className="text-[10px] font-black text-blue-400 uppercase truncate italic">Linking Node {replyTo.user}: "{replyTo.text}"</span>
-               <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-white ml-2"><X size={16}/></button>
+            <div className="absolute bottom-full left-4 right-4 px-4 py-2 bg-blue-600/10 border-t border-x border-blue-500/30 rounded-t-2xl flex items-center justify-between animate-in slide-in-from-bottom-2">
+               <span className="text-[9px] font-black text-blue-400 uppercase italic">Replying to node {replyTo.user}</span>
+               <button onClick={() => setReplyTo(null)} className="text-slate-500 hover:text-white"><X size={12}/></button>
             </div>
           )}
+
           {showTagSuggestions && (
-            <div className="absolute bottom-[calc(100%+8px)] left-8 w-64 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-20">
-              <div className="p-3 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Nodes</span>
-                <AtSign size={10} className="text-blue-500" />
-              </div>
-              <div className="max-h-48 overflow-y-auto custom-scrollbar">
+            <div className="absolute bottom-[calc(100%+8px)] left-4 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-20">
+              <div className="p-2 border-b border-white/5 bg-white/5 text-[8px] font-black text-slate-500 uppercase">Available Nodes</div>
+              <div className="max-h-40 overflow-y-auto">
                 {filteredTags.map(user => (
-                  <button key={user} onClick={() => selectTagSuggestion(user)} className="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-blue-600 hover:text-white transition-colors">
-                    <span className="font-bold">@{user}</span>
-                  </button>
+                  <button key={user} onClick={() => selectTagSuggestion(user)} className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-blue-600 hover:text-white transition-colors">@{user}</button>
                 ))}
               </div>
             </div>
           )}
-          <div className="flex gap-4">
+
+          <div className="flex gap-3">
             <div className="flex-1 relative">
               <input 
                 ref={inputRef}
@@ -302,28 +257,23 @@ export const CommunityChat: React.FC<CommunityChatProps> = ({ isPremium = false,
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={currentUser ? `Tag with @...` : "Handshake required for tagging."}
-                className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] px-6 py-4.5 text-sm focus:outline-none focus:border-blue-500/50"
+                placeholder={currentUser ? `Tag with @ or share patterns...` : "Handshake required for interactions."}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-xs focus:outline-none focus:border-blue-500/50 transition-all"
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                 {currentUser && (
-                   <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                      <Coins size={14} className="text-amber-500" />
-                      <span className="text-[10px] font-black text-amber-500">{replyTo ? '15' : '10'}</span>
-                   </div>
-                 )}
-              </div>
+              {currentUser && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                   <Coins size={10} className="text-amber-500" />
+                   <span className="text-[9px] font-black text-amber-500">{replyTo ? '15' : '10'}</span>
+                </div>
+              )}
             </div>
-            <button onClick={handleSend} disabled={!input.trim()} className="w-16 bg-blue-600 rounded-[1.5rem] text-white hover:bg-blue-500 transition-all flex items-center justify-center">
-              <Send size={24} />
+            <button 
+              onClick={handleSend} 
+              disabled={!input.trim() && currentUser !== null} 
+              className={`w-12 h-12 rounded-2xl text-white transition-all flex items-center justify-center shadow-lg active:scale-95 ${(!input.trim() && currentUser !== null) ? 'bg-slate-800' : 'bg-blue-600 hover:bg-blue-500'}`}
+            >
+              <Send size={18} />
             </button>
-          </div>
-          <div className="flex items-center justify-between px-2 mt-4 text-[9px] font-black uppercase text-slate-500">
-             <div className="flex gap-6">
-                <span>Kernel Protected</span>
-                <span>E2E Encryption</span>
-             </div>
-             {!currentUser && <span className="text-amber-500"><Lock size={10} className="inline mr-1" /> Handshake Required</span>}
           </div>
         </div>
       </div>

@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { predictionService } from '../services/geminiService';
 import { PredictionResult } from '../types';
 import { ShadowButton } from './ShadowButton';
-// Added missing Sparkles and RefreshCw imports
 import { BrainCircuit, Activity, TrendingUp, Info, Crown, Lock, Layers, Sparkles, RefreshCw } from 'lucide-react';
 import { LANGUAGES } from '../constants';
 import { FrequencyNode } from '../App';
@@ -22,14 +21,19 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
   const t = LANGUAGES[lang];
 
   const heatmapInsight = useMemo(() => {
-    // Find the highest frequency digits for each position
     const topPerPos = [1, 2, 3, 4].map(p => {
       const nodes = heatmapData.filter(n => n.pos === p);
       return nodes.sort((a, b) => b.freq - a.freq)[0];
     });
+    
+    // Find absolute highest frequency node across all positions
+    const outlier = [...heatmapData].sort((a, b) => b.freq - a.freq)[0];
+    
     const avgSync = topPerPos.reduce((acc, curr) => acc + curr.freq, 0) / 4;
     return {
       topSequence: topPerPos.map(n => n.digit).join(''),
+      outlierNode: `P${outlier.pos}-D${outlier.digit}`,
+      outlierFreq: outlier.freq,
       avgSync: Math.floor(avgSync)
     };
   }, [heatmapData]);
@@ -92,7 +96,6 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
           </>
         )}
         
-        {/* Heatmap-based contextual recommendation */}
         <div className={`col-span-2 p-4 rounded-2xl border text-[10px] leading-relaxed relative overflow-hidden group ${
           isPremium ? 'bg-amber-600/10 border-amber-500/20 text-amber-200' : 'bg-purple-600/10 border-purple-500/20 text-purple-200'
         }`}>
@@ -100,14 +103,13 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
            <div className="relative z-10 space-y-2">
               <p className="flex items-center gap-2 font-black uppercase tracking-widest text-[9px] border-b border-white/5 pb-1 mb-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                 Positional Drift Analysis
+                 Neural Intelligence Digest
               </p>
               <p>
-                <strong>Neural Recommendation:</strong> {insights?.recommendation || 'Analyzing stream...'}
-                {isPremium ? " Elite confidence levels suggest positive divergence." : ""}
+                <strong>Engine Focus:</strong> Clustering detected at <strong>{heatmapInsight.outlierNode}</strong> with {heatmapInsight.outlierFreq}% density. This drift aligns with {insights?.recommendation || 'stable patterns'}.
               </p>
               <p className="opacity-80">
-                Heatmap shows a clustering tendency around <strong>{heatmapInsight.topSequence}</strong> with a positional stability of <strong>{heatmapInsight.avgSync}%</strong>. This drift is consistent with current market entropy.
+                Heatmap synchronization at <strong>{heatmapInsight.avgSync}%</strong> suggest highest resonance for sequence <strong>{heatmapInsight.topSequence}</strong> in current market cycles.
               </p>
            </div>
         </div>
@@ -146,7 +148,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
           {!isPremium && predictions.length > 0 && (
              <button onClick={() => {}} className="w-full bg-white/5 border border-dashed border-white/20 rounded-2xl p-6 text-center space-y-3 group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all">
                 <Lock size={20} className="text-slate-600 mx-auto group-hover:text-amber-500 transition-colors" />
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest group-hover:text-slate-300">Upgrade to Elite for 8-digit high-precision patterns</p>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest group-hover:text-slate-300">Upgrade for Elite Precision Patterns</p>
              </button>
           )}
         </div>
@@ -154,7 +156,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
 
       <div className="mt-8 flex items-start gap-3 text-[9px] text-slate-600 border-t border-white/5 pt-5">
         <Info size={16} className="shrink-0 text-slate-700" />
-        <p className="leading-relaxed">Predictions are probabilistic models based on pattern recognition and positional digital resonance. Lottery outcomes remain random. 4D Nexus Pro advocates for Responsible Gaming protocols.</p>
+        <p className="leading-relaxed">Predictions are probabilistic models based on pattern recognition. Lottery outcomes remain random. 4D Nexus Pro advocates for Responsible Gaming.</p>
       </div>
 
       <ShadowButton 

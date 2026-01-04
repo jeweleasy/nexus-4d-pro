@@ -51,7 +51,8 @@ import {
   Sliders,
   Coins,
   AlertTriangle,
-  Skull
+  Skull,
+  Monitor
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -107,11 +108,15 @@ export interface FrequencyNode {
 
 const App: React.FC = () => {
   const detectLanguage = (): LangCode => {
-    const saved = localStorage.getItem('nexus_pro_lang') as LangCode;
-    if (saved && (saved === 'EN' || saved === 'CN' || saved === 'MY')) return saved;
-    const browserLang = navigator.language.toLowerCase();
-    if (browserLang.includes('zh')) return 'CN';
-    if (browserLang.includes('ms') || browserLang.includes('my')) return 'MY';
+    try {
+      const saved = localStorage.getItem('nexus_pro_lang') as LangCode;
+      if (saved && (saved === 'EN' || saved === 'CN' || saved === 'MY')) return saved;
+      const browserLang = (navigator.language || 'en').toLowerCase();
+      if (browserLang.includes('zh')) return 'CN';
+      if (browserLang.includes('ms') || browserLang.includes('my')) return 'MY';
+    } catch (e) {
+      console.warn("Storage or Navigator access limited.");
+    }
     return 'EN';
   };
 
@@ -135,17 +140,27 @@ const App: React.FC = () => {
   const mainRef = useRef<HTMLDivElement>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('nexus_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('nexus_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("User restoration failed.");
+      return null;
+    }
   });
   
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const [favorites, setFavorites] = useState<LotteryResult[]>(() => {
-    const saved = localStorage.getItem('nexus_pro_favorites');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('nexus_pro_favorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [inactivityState, setInactivityState] = useState<{ showWarning: boolean; countdown: string }>({
@@ -169,37 +184,35 @@ const App: React.FC = () => {
     return nodes;
   });
 
-  const t = LANGUAGES[lang];
+  const t = LANGUAGES[lang] || LANGUAGES.EN;
 
   useEffect(() => {
     const checkInactivity = () => {
-      const lastActive = localStorage.getItem('nexus_last_active');
-      if (!lastActive || !currentUser) return;
+      try {
+        const lastActive = localStorage.getItem('nexus_last_active');
+        if (!lastActive || !currentUser) return;
 
-      const diff = Date.now() - parseInt(lastActive);
-      
-      if (diff >= SEVEN_DAYS_MS) {
-        localStorage.removeItem('nexus_user');
-        localStorage.removeItem('nexus_points');
-        localStorage.removeItem('nexus_pro_favorites');
-        localStorage.removeItem('nexus_last_active');
-        localStorage.removeItem('nexus_pro_lang');
-        setCurrentUser(null);
-        setFavorites([]);
-        setInactivityState({ showWarning: false, countdown: '' });
-        setToast({ message: "Inactivity purge complete. Data neutralized.", type: 'error' });
-      } else if (diff >= SIX_DAYS_MS) {
-        const remaining = SEVEN_DAYS_MS - diff;
-        const hours = Math.floor(remaining / (1000 * 60 * 60));
-        const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-        const secs = Math.floor((remaining % (1000 * 60)) / 1000);
-        setInactivityState({
-          showWarning: true,
-          countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-        });
-      } else {
-        setInactivityState({ showWarning: false, countdown: '' });
-      }
+        const diff = Date.now() - parseInt(lastActive);
+        
+        if (diff >= SEVEN_DAYS_MS) {
+          localStorage.clear();
+          setCurrentUser(null);
+          setFavorites([]);
+          setInactivityState({ showWarning: false, countdown: '' });
+          setToast({ message: "Inactivity purge complete. Data neutralized.", type: 'error' });
+        } else if (diff >= SIX_DAYS_MS) {
+          const remaining = SEVEN_DAYS_MS - diff;
+          const hours = Math.floor(remaining / (1000 * 60 * 60));
+          const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+          const secs = Math.floor((remaining % (1000 * 60)) / 1000);
+          setInactivityState({
+            showWarning: true,
+            countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+          });
+        } else {
+          setInactivityState({ showWarning: false, countdown: '' });
+        }
+      } catch (e) {}
     };
 
     const timer = setInterval(checkInactivity, 1000);
@@ -209,7 +222,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const trackActivity = () => {
       if (currentUser) {
-        localStorage.setItem('nexus_last_active', Date.now().toString());
+        try {
+          localStorage.setItem('nexus_last_active', Date.now().toString());
+        } catch(e) {}
       }
     };
 
@@ -226,21 +241,29 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
+    try {
+      localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
+    } catch(e) {}
   }, [favorites]);
 
   useEffect(() => {
-    localStorage.setItem('nexus_pro_lang', lang);
+    try {
+      localStorage.setItem('nexus_pro_lang', lang);
+    } catch(e) {}
   }, [lang]);
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('nexus_user', JSON.stringify(currentUser));
-      localStorage.setItem('nexus_last_active', Date.now().toString());
+      try {
+        localStorage.setItem('nexus_user', JSON.stringify(currentUser));
+        localStorage.setItem('nexus_last_active', Date.now().toString());
+      } catch(e) {}
       setIsPremium(currentUser.isPremium);
     } else {
-      localStorage.removeItem('nexus_user');
-      localStorage.removeItem('nexus_last_active');
+      try {
+        localStorage.removeItem('nexus_user');
+        localStorage.removeItem('nexus_last_active');
+      } catch(e) {}
     }
   }, [currentUser]);
 
@@ -280,6 +303,10 @@ const App: React.FC = () => {
     if (latestForProvider) setSelectedResult(latestForProvider);
   };
 
+  const handleGuestAttempt = () => {
+    setToast({ message: t.common.guestRestriction, type: 'error' });
+  };
+
   const toggleFavorite = (result: LotteryResult) => {
     setFavorites(prev => {
       const exists = prev.some(f => f.provider === result.provider && f.drawDate === result.drawDate);
@@ -300,7 +327,7 @@ const App: React.FC = () => {
     if (dateResults.length > 0) return { results: dateResults, isFallback: false, label: t.common.officialResults, date: selectedDate };
     const latestAvailableDate = [...MOCK_RESULTS].sort((a,b) => b.timestamp - a.timestamp)[0]?.drawDate || todayStr;
     return { results: MOCK_RESULTS.filter(r => r.drawDate === latestAvailableDate), isFallback: true, label: t.common.latestResults, date: latestAvailableDate };
-  }, [selectedDate, lang]);
+  }, [selectedDate, t]);
 
   const handleVoiceCommand = (intent: string, provider: string | null) => {
     setToast({ message: `AI Intent: ${intent}`, type: 'info' });
@@ -344,7 +371,7 @@ const App: React.FC = () => {
           'border-white/10'
         }`}>
           <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-green-500' : toast.type === 'premium' ? 'bg-amber-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-          <span className="text-xs font-bold font-orbitron tracking-wider">{toast.message}</span>
+          <span className="text-xs font-bold font-orbitron tracking-wider text-center">{toast.message}</span>
         </div>
       )}
 
@@ -358,7 +385,9 @@ const App: React.FC = () => {
              </div>
           </div>
           <button 
-            onClick={() => localStorage.setItem('nexus_last_active', Date.now().toString())}
+            onClick={() => {
+              try { localStorage.setItem('nexus_last_active', Date.now().toString()); } catch(e) {}
+            }}
             className="px-6 py-2 bg-white text-red-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-all active:scale-95"
           >
             SYNC NOW
@@ -369,7 +398,7 @@ const App: React.FC = () => {
       {showScrollTop && (
         <button 
           onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-8 right-8 z-[140] w-12 h-12 glass border border-white/10 rounded-2xl flex items-center justify-center text-blue-500 shadow-2xl hover:scale-110 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
+          className="fixed bottom-24 right-8 z-[140] w-12 h-12 glass border border-white/10 rounded-2xl flex items-center justify-center text-blue-500 shadow-2xl hover:scale-110 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
         >
           <ChevronUp size={24} />
         </button>
@@ -378,7 +407,19 @@ const App: React.FC = () => {
       {showAr && <ArExperience onClose={() => setShowAr(false)} />}
       <AIChatAssistant />
       {verifyingResultId && <BlockchainVerification resultId={verifyingResultId} onClose={() => setVerifyingResultId(null)} />}
-      <ProviderResultsModal result={selectedResult} onClose={() => setSelectedResult(null)} lang={lang} isFavorite={selectedResult ? isResultFavorite(selectedResult) : false} onToggleFavorite={selectedResult ? () => toggleFavorite(selectedResult) : undefined} onShare={selectedResult ? () => setSharingResult(selectedResult) : undefined} />
+      <ProviderResultsModal 
+        result={selectedResult} 
+        onClose={() => setSelectedResult(null)} 
+        lang={lang} 
+        isLoggedIn={!!currentUser}
+        onGuestAttempt={handleGuestAttempt}
+        isFavorite={selectedResult ? isResultFavorite(selectedResult) : false} 
+        onToggleFavorite={selectedResult ? () => toggleFavorite(selectedResult) : undefined} 
+        onShare={selectedResult ? (e) => {
+          if (!currentUser) { handleGuestAttempt(); return; }
+          setSharingResult(selectedResult);
+        } : undefined} 
+      />
       <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />
       
       <LoginModal 
@@ -423,7 +464,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white scroll-smooth">
+      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white scroll-smooth pb-24">
         <header className="flex h-20 items-center justify-between px-4 md:px-8 border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
           <div className="flex items-center gap-2 md:gap-6">
             <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-slate-500 hover:text-blue-500 transition-colors">
@@ -588,10 +629,47 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-6">
-                    {displayResults.results.map((res, i) => (
+                    {displayResults.results.slice(0, 2).map((res, i) => (
                       <div key={i} className="relative group">
                         <div onClick={() => setSelectedResult(res)} className="cursor-pointer">
-                          <ResultCard result={res} lang={lang} isFavorite={isResultFavorite(res)} onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }} onShare={(e) => { e.stopPropagation(); setSharingResult(res); }} />
+                          <ResultCard 
+                            result={res} 
+                            lang={lang} 
+                            isLoggedIn={!!currentUser}
+                            onGuestAttempt={handleGuestAttempt}
+                            isFavorite={isResultFavorite(res)} 
+                            onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }} 
+                            onShare={(e) => { 
+                              e.stopPropagation(); 
+                              if (!currentUser) { handleGuestAttempt(); return; }
+                              setSharingResult(res); 
+                            }} 
+                          />
+                        </div>
+                        <button onClick={() => setVerifyingResultId(res.drawNumber)} className="absolute bottom-6 right-6 p-2 glass rounded-lg border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-600/20 text-blue-500 z-10">
+                          <ShieldCheck size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    {!isPremium && <AdSensePlaceholder variant="IN_FEED" slot="DASHBOARD_FEED_AD" />}
+
+                    {displayResults.results.slice(2).map((res, i) => (
+                      <div key={i+2} className="relative group">
+                        <div onClick={() => setSelectedResult(res)} className="cursor-pointer">
+                          <ResultCard 
+                            result={res} 
+                            lang={lang} 
+                            isLoggedIn={!!currentUser}
+                            onGuestAttempt={handleGuestAttempt}
+                            isFavorite={isResultFavorite(res)} 
+                            onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }} 
+                            onShare={(e) => { 
+                              e.stopPropagation(); 
+                              if (!currentUser) { handleGuestAttempt(); return; }
+                              setSharingResult(res); 
+                            }} 
+                          />
                         </div>
                         <button onClick={() => setVerifyingResultId(res.drawNumber)} className="absolute bottom-6 right-6 p-2 glass rounded-lg border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-600/20 text-blue-500 z-10">
                           <ShieldCheck size={14} />
@@ -604,7 +682,7 @@ const App: React.FC = () => {
                   <LuckyNumber lang={lang} heatmapData={heatmapData} />
                   <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
                   <DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} />
-                  {!isPremium && <AdSensePlaceholder slot="SIDEBAR_NATIVE" />}
+                  {!isPremium && <AdSensePlaceholder slot="SIDEBAR_NATIVE" variant="SIDEBAR" />}
                   <GamingTools />
                 </div>
               </div>
@@ -620,13 +698,17 @@ const App: React.FC = () => {
           }} />}
           
           {activeView === 'admin' && (isAdmin ? <AdminDashboard /> : <div className="max-w-md mx-auto py-20 text-center space-y-8"><div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center mx-auto border border-red-500/20"><Lock size={40} className="text-red-500" /></div><h2 className="text-3xl font-orbitron font-bold">Admin Restricted</h2><ShadowButton onClick={() => setIsAdmin(true)} variant="secondary" className="w-full py-4">Simulate Admin Login</ShadowButton></div>)}
-          {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} />}
+          {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
           {activeView === 'challenges' && <RankingSystem />}
           {activeView === 'predictions' && <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"><Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} /><div className="space-y-8"><LuckyNumber lang={lang} heatmapData={heatmapData} /><DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div></div>}
-          {activeView === 'stats' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold">{t.nav.stats}</h2><StatsChart /><DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div>}
-          {activeView === 'archive' && <HistoryArchive lang={lang} />}
-          {activeView === 'news' && <NewsSection />}
-          {activeView === 'favorites' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" fill="currentColor"/> {t.nav.favorites}</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{favorites.map((r,i)=>(<ResultCard key={i} result={r} lang={lang} isFavorite={true} onToggleFavorite={()=>toggleFavorite(r)} onShare={()=>setSharingResult(r)}/>))}</div></div>}
+          {activeView === 'stats' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold">{t.nav.stats}</h2><StatsChart />{!isPremium && <AdSensePlaceholder variant="BANNER" slot="STATS_TOP_BANNER" />}<DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div>}
+          {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'news' && <NewsSection isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'favorites' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" fill="currentColor"/> {t.nav.favorites}</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{favorites.map((r,i)=>(<ResultCard key={i} result={r} lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} isFavorite={true} onToggleFavorite={()=>toggleFavorite(r)} onShare={(e)=>{
+            e.stopPropagation();
+            if (!currentUser) { handleGuestAttempt(); return; }
+            setSharingResult(r);
+          }}/>))}</div></div>}
           {['disclaimer', 'privacy', 'about', 'contact', 'sitemap', 'terms'].includes(activeView) && (<div className="glass p-8 rounded-3xl border border-white/5">{activeView === 'disclaimer' && <DisclaimerPage />}{activeView === 'privacy' && <PrivacyPolicy />}{activeView === 'about' && <AboutUs />}{activeView === 'contact' && <ContactUs />}{activeView === 'sitemap' && <Sitemap onNavigate={setActiveView} />}{activeView === 'terms' && <TermsConditions />}</div>)}
           {activeView === 'widgets' && <div className="max-w-3xl mx-auto"><WidgetGenerator /></div>}
         </div>
@@ -637,9 +719,9 @@ const App: React.FC = () => {
                 <NexusLogo size="sm" className="opacity-50" />
                 <p className="text-xs leading-relaxed">4D Nexus Pro intelligence ecosystem. Secured by Nexus Chain proofing.</p>
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all cursor-pointer"><Facebook size={14}/></div>
-                  <div className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-blue-400 hover:text-white transition-all cursor-pointer"><Twitter size={14}/></div>
-                  <div className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all cursor-pointer"><Instagram size={14}/></div>
+                  <div onClick={() => !currentUser ? handleGuestAttempt() : null} className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all cursor-pointer"><Facebook size={14}/></div>
+                  <div onClick={() => !currentUser ? handleGuestAttempt() : null} className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-blue-400 hover:text-white transition-all cursor-pointer"><Twitter size={14}/></div>
+                  <div onClick={() => !currentUser ? handleGuestAttempt() : null} className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all cursor-pointer"><Instagram size={14}/></div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-12">
@@ -661,6 +743,25 @@ const App: React.FC = () => {
               </div>
            </div>
         </footer>
+
+        {!isPremium && (
+          <div className="fixed bottom-0 left-0 md:left-72 right-0 z-[145] h-20 md:h-24 glass-strong border-t border-white/10 flex items-center justify-center animate-in slide-in-from-bottom-full duration-1000">
+             <div className="w-full max-w-4xl px-4 flex items-center gap-4">
+                <div className="hidden sm:block shrink-0 p-2 bg-blue-600/10 rounded-lg border border-blue-500/20">
+                   <Monitor size={16} className="text-blue-500" />
+                </div>
+                <div className="flex-1">
+                   <AdSensePlaceholder variant="BANNER" slot="GLOBAL_STICKY_BOTTOM" className="!bg-transparent !border-0 h-16 md:h-20" />
+                </div>
+                <div className="hidden lg:flex shrink-0 w-32 items-center justify-center">
+                   <AdSensePlaceholder variant="VIDEO" slot="STICKY_CORNER_VIDEO" className="!bg-transparent !border-0 !h-16" />
+                </div>
+                <button onClick={() => setToast({ message: 'Elite Membership required to remove ads.', type: 'premium' })} className="p-2 text-slate-500 hover:text-white transition-colors">
+                   <X size={16} />
+                </button>
+             </div>
+          </div>
+        )}
       </main>
     </div>
   );
