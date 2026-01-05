@@ -15,6 +15,10 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
   const [claimProgress, setClaimProgress] = useState(0);
   const [claimCountdown, setClaimCountdown] = useState(21);
   
+  // Frequency Pulse specific states
+  const [isPulsing, setIsPulsing] = useState(false);
+  const [pulseProgress, setPulseProgress] = useState(0);
+  
   const [points, setPoints] = useState(() => {
     const saved = localStorage.getItem('nexus_points');
     return saved ? parseInt(saved) : 450;
@@ -80,8 +84,29 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
     return () => clearInterval(interval);
   }, [isClaiming]);
 
+  // Frequency Pulse effect (21 seconds, no numeric countdown)
+  useEffect(() => {
+    let interval: any;
+    if (isPulsing) {
+      const duration = 21000;
+      const intervalTime = 100;
+      const increment = (intervalTime / duration) * 100;
+      
+      interval = setInterval(() => {
+        setPulseProgress((prev) => {
+          if (prev >= 100) {
+            finalizePulse();
+            return 100;
+          }
+          return prev + increment;
+        });
+      }, intervalTime);
+    }
+    return () => clearInterval(interval);
+  }, [isPulsing]);
+
   const handleStartClaim = () => {
-    if (!canClaimDaily || isClaiming) return;
+    if (!canClaimDaily || isClaiming || isPulsing) return;
     setIsClaiming(true);
     setClaimCountdown(21);
     setClaimProgress(0);
@@ -105,15 +130,32 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
   };
 
   const handleNexusFrequencyPulse = () => {
-    if (!currentUser) return;
+    if (!currentUser || isPulsing || isClaiming) return;
     if (points < 9) {
       alert("Insufficient points for Frequency Pulse. Required: 9 Pts");
       return;
     }
+    
+    // Subtract 9 points immediately at start of pulse
+    const pointsAfterDeduction = points - 9;
+    setPoints(pointsAfterDeduction);
+    if (currentUser) {
+      onUpdateUser({ ...currentUser, points: pointsAfterDeduction });
+    }
+
+    setIsPulsing(true);
+    setPulseProgress(0);
+  };
+
+  const finalizePulse = () => {
     const bonus = Math.floor(Math.random() * (19 - 6 + 1)) + 6;
-    const newPoints = points - 9 + bonus;
-    setPoints(newPoints);
-    onUpdateUser({ ...currentUser, points: newPoints });
+    const finalPoints = points + bonus;
+    setPoints(finalPoints);
+    if (currentUser) {
+      onUpdateUser({ ...currentUser, points: finalPoints });
+    }
+    setIsPulsing(false);
+    setPulseProgress(0);
   };
 
   const redeemReward = (cost: number, label: string) => {
@@ -163,7 +205,7 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
       {activeTab === 'daily' ? (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3 relative overflow-hidden">
-            {isClaiming && (
+            {(isClaiming || isPulsing) && (
               <div className="absolute inset-0 bg-blue-600/10 z-0 animate-pulse"></div>
             )}
             
@@ -184,7 +226,7 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
                       <RefreshCw size={32} className="text-blue-500 animate-spin" />
                       <Activity size={14} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white animate-pulse" />
                    </div>
-                   <p className="text-[10px] font-bold text-blue-300 tracking-widest">QUANTUM VERIFICATION IN PROGRESS</p>
+                   <p className="text-[10px] font-bold text-blue-300 tracking-widest uppercase">Quantum Verification</p>
                 </div>
                 <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
                    <div 
@@ -199,7 +241,7 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
             ) : (
               <ShadowButton 
                 variant="primary" 
-                disabled={!canClaimDaily}
+                disabled={!canClaimDaily || isPulsing}
                 onClick={handleStartClaim}
                 className="w-full flex items-center justify-center gap-2 py-2 text-[10px] relative z-10 group"
               >
@@ -219,22 +261,48 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
           </div>
 
           {currentUser ? (
-            <div className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 space-y-3">
-              <div className="flex justify-between items-center">
+            <div className={`p-4 rounded-2xl border transition-all duration-500 ${isPulsing ? 'bg-amber-500/10 border-amber-500/40' : 'bg-amber-500/5 border-amber-500/20'} space-y-3 relative overflow-hidden`}>
+              {isPulsing && (
+                <div className="absolute inset-0 bg-amber-500/5 animate-pulse pointer-events-none"></div>
+              )}
+              
+              <div className="flex justify-between items-center relative z-10">
                  <span className="text-[9px] font-black uppercase text-amber-500 tracking-[0.2em]">Frequency Pulse</span>
-                 <span className="text-[8px] text-amber-500/60 font-bold">MEMBER ONLY</span>
+                 <span className="text-[8px] text-amber-500/60 font-bold uppercase">{isPulsing ? 'Calibrating' : 'Member Only'}</span>
               </div>
-              <p className="text-[8px] text-slate-400 leading-tight italic">
-                Repeatedly pulse for 9 Pts to shift entropy. Reward: 6-19 Pts.
-              </p>
-              <ShadowButton 
-                variant="gold" 
-                onClick={handleNexusFrequencyPulse}
-                disabled={points < 9 || isClaiming}
-                className="w-full text-[10px] py-2 flex items-center justify-center gap-2"
-              >
-                <Zap size={14} /> PULSE FOR 9 PTS
-              </ShadowButton>
+
+              {isPulsing ? (
+                <div className="space-y-4 relative z-10 py-2">
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <div className="relative">
+                       <Zap size={32} className="text-amber-500 animate-bounce" />
+                       <Sparkles size={12} className="absolute -top-1 -right-1 text-white animate-pulse" />
+                    </div>
+                    <p className="text-[10px] font-black text-amber-400 tracking-[0.3em] uppercase animate-pulse">Shifting Entropy Flows</p>
+                  </div>
+                  <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                    <div 
+                      className="h-full bg-amber-500 transition-all duration-300 ease-linear shadow-[0_0_12px_rgba(245,158,11,0.6)]"
+                      style={{ width: `${pulseProgress}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-[7px] text-center text-slate-500 font-bold uppercase tracking-widest">Awaiting Neural Convergence (21s)</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[8px] text-slate-400 leading-tight italic relative z-10">
+                    Repeatedly pulse for 9 Pts to shift entropy. Reward: 6-19 Pts.
+                  </p>
+                  <ShadowButton 
+                    variant="gold" 
+                    onClick={handleNexusFrequencyPulse}
+                    disabled={points < 9 || isClaiming || isPulsing}
+                    className="w-full text-[10px] py-2 flex items-center justify-center gap-2 relative z-10"
+                  >
+                    <Zap size={14} /> PULSE FOR 9 PTS
+                  </ShadowButton>
+                </>
+              )}
             </div>
           ) : (
             <div className="p-4 rounded-2xl bg-slate-900/40 border border-white/5 text-center">
@@ -250,9 +318,9 @@ export const LoyaltySystem: React.FC<LoyaltySystemProps> = ({ currentUser, onUpd
              <button 
                key={i}
                onClick={() => redeemReward(reward.cost, reward.label)}
-               disabled={points < reward.cost || isClaiming}
+               disabled={points < reward.cost || isClaiming || isPulsing}
                className={`w-full text-left p-3 rounded-2xl border flex items-center gap-4 group transition-all ${
-                 points >= reward.cost && !isClaiming
+                 points >= reward.cost && !isClaiming && !isPulsing
                  ? 'bg-white/5 border-white/10 hover:border-amber-500/50' 
                  : 'bg-black/20 border-white/5 opacity-50 grayscale'
                }`}
