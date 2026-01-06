@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { predictionService } from '../services/geminiService';
 import { PredictionResult } from '../types';
 import { ShadowButton } from './ShadowButton';
-import { BrainCircuit, Activity, TrendingUp, Info, Crown, Lock, Layers, Sparkles, RefreshCw } from 'lucide-react';
+// Added Loader2 to the imports from lucide-react to fix the reference error on line 138
+import { BrainCircuit, Activity, TrendingUp, Info, Crown, Lock, Layers, Sparkles, RefreshCw, PlayCircle, BarChart, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { LANGUAGES } from '../constants';
 import { FrequencyNode } from '../App';
 
@@ -17,6 +18,9 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
   const [loading, setLoading] = useState(false);
   const [predictions, setPredictions] = useState<PredictionResult[]>([]);
   const [insights, setInsights] = useState<any>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationResults, setSimulationResults] = useState<{number: string, count: number}[]>([]);
+  const [showSimResults, setShowSimResults] = useState(false);
 
   const t = LANGUAGES[lang];
 
@@ -26,9 +30,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
       return nodes.sort((a, b) => b.freq - a.freq)[0];
     });
     
-    // Find absolute highest frequency node across all positions
     const outlier = [...heatmapData].sort((a, b) => b.freq - a.freq)[0];
-    
     const avgSync = topPerPos.reduce((acc, curr) => acc + curr.freq, 0) / 4;
     return {
       topSequence: topPerPos.map(n => n.digit).join(''),
@@ -49,6 +51,28 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
     setPredictions(predRes.predictions);
     setInsights(insightRes);
     setLoading(false);
+  };
+
+  const handleRunSimulation = () => {
+    setIsSimulating(true);
+    setShowSimResults(false);
+    
+    setTimeout(() => {
+      const results: Record<string, number> = {};
+      for (let i = 0; i < 100; i++) {
+        const num = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        results[num] = (results[num] || 0) + 1;
+      }
+      
+      const sortedResults = Object.entries(results)
+        .map(([number, count]) => ({ number, count }))
+        .sort((a, b) => b.count - a.count || parseInt(a.number) - parseInt(b.number))
+        .slice(0, 10);
+        
+      setSimulationResults(sortedResults);
+      setIsSimulating(false);
+      setShowSimResults(true);
+    }, 2000);
   };
 
   useEffect(() => {
@@ -95,24 +119,51 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
             <div className="h-14 bg-white/5 rounded-xl animate-pulse"></div>
           </>
         )}
-        
-        <div className={`col-span-2 p-4 rounded-2xl border text-[10px] leading-relaxed relative overflow-hidden group ${
-          isPremium ? 'bg-amber-600/10 border-amber-500/20 text-amber-200' : 'bg-purple-600/10 border-purple-500/20 text-purple-200'
-        }`}>
-           <Layers className="absolute -right-2 -bottom-2 text-white/5 group-hover:text-white/10 transition-colors" size={64} />
-           <div className="relative z-10 space-y-2">
-              <p className="flex items-center gap-2 font-black uppercase tracking-widest text-[9px] border-b border-white/5 pb-1 mb-2">
-                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                 Neural Intelligence Digest
-              </p>
-              <p>
-                <strong>Engine Focus:</strong> Clustering detected at <strong>{heatmapInsight.outlierNode}</strong> with {heatmapInsight.outlierFreq}% density. This drift aligns with {insights?.recommendation || 'stable patterns'}.
-              </p>
-              <p className="opacity-80">
-                Heatmap synchronization at <strong>{heatmapInsight.avgSync}%</strong> suggest highest resonance for sequence <strong>{heatmapInsight.topSequence}</strong> in current market cycles.
-              </p>
-           </div>
+      </div>
+
+      {/* Simulation Engine Section */}
+      <div className="mb-6 p-4 rounded-2xl bg-blue-600/5 border border-blue-500/10 space-y-4">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
+            <PlayCircle size={14}/> Monte Carlo Engine
+          </span>
+          {showSimResults && (
+            <button onClick={() => setShowSimResults(!showSimResults)} className="text-slate-500 hover:text-white">
+              {showSimResults ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+            </button>
+          )}
         </div>
+        
+        {isSimulating ? (
+          <div className="flex flex-col items-center py-4 space-y-2">
+            <Loader2 className="text-blue-500 animate-spin" size={24} />
+            <p className="text-[8px] font-black text-slate-500 uppercase animate-pulse">Crunching 100 Entropy Cycles...</p>
+          </div>
+        ) : (
+          <ShadowButton 
+            onClick={handleRunSimulation}
+            variant="secondary"
+            className="w-full py-3 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2"
+          >
+            <BarChart size={14} /> Run 100x Simulation
+          </ShadowButton>
+        )}
+
+        {showSimResults && (
+          <div className="space-y-2 pt-2 animate-in slide-in-from-top-2 duration-300">
+             <div className="grid grid-cols-5 gap-1.5">
+                {simulationResults.map((res, i) => (
+                  <div key={i} className="bg-black/40 border border-white/5 rounded-lg p-2 text-center group hover:border-blue-500/30 transition-all">
+                    <p className="text-[9px] font-orbitron font-bold text-white mb-1">{res.number}</p>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                       <div className="h-full bg-blue-500" style={{ width: `${(res.count/2)*100}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+             </div>
+             <p className="text-[7px] text-slate-600 font-bold uppercase text-center pt-1">Distribution results based on 100 random neural passes</p>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -144,19 +195,12 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
               </div>
             </div>
           ))}
-
-          {!isPremium && predictions.length > 0 && (
-             <button onClick={() => {}} className="w-full bg-white/5 border border-dashed border-white/20 rounded-2xl p-6 text-center space-y-3 group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all">
-                <Lock size={20} className="text-slate-600 mx-auto group-hover:text-amber-500 transition-colors" />
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest group-hover:text-slate-300">Upgrade for Elite Precision Patterns</p>
-             </button>
-          )}
         </div>
       )}
 
       <div className="mt-8 flex items-start gap-3 text-[9px] text-slate-600 border-t border-white/5 pt-5">
         <Info size={16} className="shrink-0 text-slate-700" />
-        <p className="leading-relaxed">Predictions are probabilistic models based on pattern recognition. Lottery outcomes remain random. 4D Nexus Pro advocates for Responsible Gaming.</p>
+        <p className="leading-relaxed">Predictions and simulations are probabilistic models. Lottery outcomes remain random. 4D Nexus Pro advocates for Responsible Gaming.</p>
       </div>
 
       <ShadowButton 

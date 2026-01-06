@@ -52,7 +52,9 @@ import {
   Coins,
   AlertTriangle,
   Skull,
-  Monitor
+  Monitor,
+  Sparkles,
+  MapPin
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -83,6 +85,8 @@ import { RankingSystem } from './components/RankingSystem';
 import { RegistrationModal } from './components/RegistrationModal';
 import { LoginModal } from './components/LoginModal';
 import { HistoryArchive } from './components/HistoryArchive';
+import { PersonalWatchlist } from './components/PersonalWatchlist';
+import { SellerArchive } from './components/SellerArchive';
 import { LotteryProvider, LotteryResult, User } from './types';
 import { 
   DisclaimerPage, 
@@ -93,7 +97,7 @@ import {
   TermsConditions 
 } from './components/LegalPages';
 
-type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'favorites' | 'premium' | 'manual' | 'admin' | 'disclaimer' | 'privacy' | 'about' | 'contact' | 'sitemap' | 'terms' | 'community' | 'widgets' | 'challenges';
+type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'favorites' | 'premium' | 'manual' | 'admin' | 'disclaimer' | 'privacy' | 'about' | 'contact' | 'sitemap' | 'terms' | 'community' | 'widgets' | 'challenges' | 'sellers';
 type LangCode = 'EN' | 'CN' | 'MY';
 
 const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
@@ -136,6 +140,9 @@ const App: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileTools, setShowMobileTools] = useState(false);
+  
+  // Match Celebration State
+  const [celebrationMatch, setCelebrationMatch] = useState<{ result: LotteryResult; num: string } | null>(null);
   
   const mainRef = useRef<HTMLDivElement>(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -346,6 +353,10 @@ const App: React.FC = () => {
     setToast({ message: "Global Heatmap Sync Complete", type: 'success' });
   };
 
+  const handleWatchlistMatch = (result: LotteryResult, num: string) => {
+    setCelebrationMatch({ result, num });
+  };
+
   const NavItem = ({ icon: Icon, label, id, badge }: { icon: any, label: string, id: View, badge?: string }) => (
     <button
       onClick={() => { setActiveView(id); setSidebarOpen(false); }}
@@ -372,6 +383,49 @@ const App: React.FC = () => {
         }`}>
           <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-green-500' : toast.type === 'premium' ? 'bg-amber-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
           <span className="text-xs font-bold font-orbitron tracking-wider text-center">{toast.message}</span>
+        </div>
+      )}
+
+      {/* Match Celebration Overlay */}
+      {celebrationMatch && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setCelebrationMatch(null)}></div>
+          <div className="relative glass-strong rounded-[3rem] border-2 border-amber-500/40 p-12 text-center space-y-8 shadow-[0_0_100px_rgba(245,158,11,0.2)] animate-in zoom-in slide-in-from-bottom-12 duration-700">
+             <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[3rem]">
+                <div className="absolute -top-20 -left-20 w-64 h-64 bg-amber-500/20 blur-[80px] animate-pulse"></div>
+                <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-500/20 blur-[80px] animate-pulse"></div>
+             </div>
+             
+             <div className="relative z-10 space-y-4">
+                <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)] animate-bounce">
+                   <Trophy size={48} className="text-amber-500" />
+                </div>
+                <h2 className="text-6xl font-orbitron font-black text-white glow-gold tracking-tighter">CONGRATS!</h2>
+                <p className="text-xl font-orbitron font-bold text-amber-500 uppercase tracking-[0.3em]">Signature Match Detected</p>
+             </div>
+
+             <div className="relative z-10 bg-white/5 border border-white/10 rounded-[2rem] p-8 space-y-4">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Matched Sequence</p>
+                <div className="text-8xl font-orbitron font-black text-white tracking-[0.1em]">{celebrationMatch.num}</div>
+                <div className="flex flex-col gap-1">
+                   <p className="text-lg font-orbitron font-bold text-blue-400">{celebrationMatch.result.provider}</p>
+                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{celebrationMatch.result.drawDate} &bull; Draw #{celebrationMatch.result.drawNumber}</p>
+                </div>
+             </div>
+
+             <div className="relative z-10 flex gap-4">
+                <ShadowButton onClick={() => setCelebrationMatch(null)} variant="gold" className="flex-1 py-5 text-sm font-black uppercase">
+                  Collect Victory Data
+                </ShadowButton>
+             </div>
+
+             <div className="absolute -top-4 -left-4">
+                <Sparkles size={40} className="text-amber-500 animate-pulse" />
+             </div>
+             <div className="absolute -bottom-4 -right-4">
+                <Sparkles size={40} className="text-blue-500 animate-pulse" />
+             </div>
+          </div>
         </div>
       )}
 
@@ -443,6 +497,7 @@ const App: React.FC = () => {
           <NavItem icon={LayoutDashboard} label={t.nav.dashboard} id="dashboard" />
           <NavItem icon={BarChart3} label={t.nav.stats} id="stats" />
           <NavItem icon={History} label={t.nav.archive} id="archive" />
+          <NavItem icon={MapPin} label={t.nav.sellers} id="sellers" />
           <NavItem icon={Heart} label={t.nav.favorites} id="favorites" />
           <NavItem icon={MessageCircle} label={t.nav.community} id="community" />
           <NavItem icon={Trophy} label={t.nav.challenges} id="challenges" />
@@ -679,6 +734,11 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-8">
+                  <PersonalWatchlist 
+                    isLoggedIn={!!currentUser} 
+                    onGuestAttempt={handleGuestAttempt} 
+                    onMatch={handleWatchlistMatch} 
+                  />
                   <LuckyNumber lang={lang} heatmapData={heatmapData} />
                   <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
                   <DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} />
@@ -702,8 +762,9 @@ const App: React.FC = () => {
           {activeView === 'challenges' && <RankingSystem />}
           {activeView === 'predictions' && <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"><Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} /><div className="space-y-8"><LuckyNumber lang={lang} heatmapData={heatmapData} /><DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div></div>}
           {activeView === 'stats' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold">{t.nav.stats}</h2><StatsChart />{!isPremium && <AdSensePlaceholder variant="BANNER" slot="STATS_TOP_BANNER" />}<DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div>}
-          {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} onMatch={handleWatchlistMatch} />}
           {activeView === 'news' && <NewsSection isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'sellers' && <SellerArchive isAdmin={isAdmin} onNavigateToContact={() => setActiveView('contact')} />}
           {activeView === 'favorites' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" fill="currentColor"/> {t.nav.favorites}</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{favorites.map((r,i)=>(<ResultCard key={i} result={r} lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} isFavorite={true} onToggleFavorite={()=>toggleFavorite(r)} onShare={(e)=>{
             e.stopPropagation();
             if (!currentUser) { handleGuestAttempt(); return; }

@@ -72,7 +72,7 @@
             border: 1px solid var(--border-color);
         }
 
-        .glow-gold { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .glow-gold { text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
 
         @keyframes pulse-border {
             0% { border-color: rgba(59, 130, 246, 0.5); }
@@ -80,6 +80,25 @@
             100% { border-color: rgba(59, 130, 246, 0.5); }
         }
         .animate-pulse-border { animation: pulse-border 2s infinite; }
+
+        @keyframes heart-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1); }
+        }
+        .animate-heart-pop { animation: heart-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        @keyframes prize-breathe {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.2); }
+        }
+        .animate-prize-breathe { animation: prize-breathe 3s infinite ease-in-out; }
+
+        @keyframes radiant-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.5); }
+        }
+        .animate-radiant-glow { animation: radiant-glow 2s infinite ease-in-out; }
 
         @keyframes scroll {
           0% { transform: translateX(0); }

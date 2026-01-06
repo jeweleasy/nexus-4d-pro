@@ -1,6 +1,38 @@
 
-import React, { useState, useMemo } from 'react';
-import { Search, Calendar, Filter, Clock, Download, ChevronRight, History, Database, Sparkles, TrendingUp, Info, CheckCircle2, Settings, X, Activity, Server, Zap, Loader2, Check, Globe, ShieldCheck } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Search, 
+  Calendar, 
+  Filter, 
+  Clock, 
+  Download, 
+  ChevronRight, 
+  History, 
+  Database, 
+  Sparkles, 
+  TrendingUp, 
+  Info, 
+  CheckCircle2, 
+  Settings, 
+  X, 
+  Activity, 
+  Server, 
+  Zap, 
+  Loader2, 
+  Check, 
+  Globe, 
+  ShieldCheck, 
+  Box, 
+  AlertTriangle, 
+  Target, 
+  Plus, 
+  Hash,
+  Trash2,
+  Bell,
+  ShieldAlert,
+  ChevronDown,
+  ArrowUpRight
+} from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES } from '../constants';
 import { ResultCard } from './ResultCard';
 import { LotteryProvider, LotteryResult } from '../types';
@@ -10,17 +42,43 @@ interface HistoryArchiveProps {
   lang: 'EN' | 'CN' | 'MY';
   isLoggedIn?: boolean;
   onGuestAttempt?: () => void;
+  onMatch?: (result: LotteryResult, matchedNum: string) => void;
 }
 
-export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn = false, onGuestAttempt }) => {
+interface WatchedNumber {
+  id: string;
+  number: string;
+  provider: LotteryProvider | 'All';
+  timestamp: number;
+}
+
+const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => (
+  <div className="group relative">
+    {children}
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 px-4 py-2.5 bg-[#0a0a0a] border border-blue-500/30 text-[10px] font-bold text-slate-300 uppercase tracking-widest rounded-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-[210] shadow-[0_10px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+      <p className="leading-relaxed">{text}</p>
+      <div className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0a0a0a] border-r border-b border-blue-500/30 rotate-45 -mt-1.5"></div>
+    </div>
+  </div>
+);
+
+export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn = false, onGuestAttempt, onMatch }) => {
   const [searchNumber, setSearchNumber] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<LotteryProvider | 'All'>('All');
   const [selectedYear, setSelectedYear] = useState('2024');
   const [drawDayFilter, setDrawDayFilter] = useState<'All' | 'Wed' | 'Sat' | 'Sun' | 'Special'>('All');
   const [isScanning, setIsScanning] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStage, setScanStage] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  
+  // Watchlist State (Integrated with global nexus_watchlist)
+  const [watchedNumbers, setWatchedNumbers] = useState<WatchedNumber[]>([]);
+  const [monitorNum, setMonitorNum] = useState('');
+  const [monitorProvider, setMonitorProvider] = useState<LotteryProvider | 'All'>('All');
+
   const [exportConfig, setExportConfig] = useState({
     includeMain: true,
     includeSpecial: true,
@@ -30,7 +88,16 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
   
   const t = LANGUAGES[lang];
 
-  // Logic for data cache status
+  useEffect(() => {
+    const saved = localStorage.getItem('nexus_watchlist');
+    if (saved) setWatchedNumbers(JSON.parse(saved));
+  }, []);
+
+  const saveWatchlist = (list: WatchedNumber[]) => {
+    setWatchedNumbers(list);
+    localStorage.setItem('nexus_watchlist', JSON.stringify(list));
+  };
+
   const cacheStatus = useMemo(() => {
     return {
       status: 'Updated',
@@ -59,12 +126,46 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
       else if (drawDayFilter === 'Sat') matchDay = day === 6;
       else if (drawDayFilter === 'Sun') matchDay = day === 0;
       else if (drawDayFilter === 'Special') {
-        matchDay = ![0, 3, 6].includes(day); // Mock logic for special draws
+        matchDay = ![0, 3, 6].includes(day);
       }
 
       return matchProvider && matchNumber && matchYear && matchDay;
     }).sort((a, b) => b.timestamp - a.timestamp);
   }, [searchNumber, selectedProvider, selectedYear, drawDayFilter]);
+
+  const handleMonitorAdd = () => {
+    if (!isLoggedIn) {
+      onGuestAttempt?.();
+      return;
+    }
+    if (monitorNum.length !== 4) return;
+
+    const newEntry: WatchedNumber = {
+      id: Math.random().toString(36).substring(2, 9),
+      number: monitorNum,
+      provider: monitorProvider,
+      timestamp: Date.now()
+    };
+
+    const newList = [newEntry, ...watchedNumbers];
+    saveWatchlist(newList);
+    setMonitorNum('');
+
+    // Immediate check against all history
+    const match = MOCK_RESULTS.find(res => {
+      const providerMatch = monitorProvider === 'All' || res.provider === monitorProvider;
+      if (!providerMatch) return false;
+      return res.first === monitorNum || res.second === monitorNum || res.third === monitorNum || res.specials?.includes(monitorNum) || res.consolations?.includes(monitorNum);
+    });
+
+    if (match) {
+      onMatch?.(match, monitorNum);
+    }
+  };
+
+  const handleRemoveWatched = (id: string) => {
+    saveWatchlist(watchedNumbers.filter(n => n.id !== id));
+  };
 
   const handleDeepScan = () => {
     setIsScanning(true);
@@ -90,25 +191,88 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
     });
   };
 
+  const triggerDownload = (filename: string, content: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExport = () => {
-    alert(`Export Dispatch: ${filteredResults.length} records. Format: ${exportConfig.format}. Settings: Main(${exportConfig.includeMain}) Special(${exportConfig.includeSpecial}) Consolation(${exportConfig.includeConsolation})`);
-    setShowExportModal(false);
+    if (exportConfig.format === 'PDF') {
+      alert("PDF Export Engine is currently under maintenance. Please use CSV or JSON.");
+      return;
+    }
+
+    if (filteredResults.length === 0) {
+      alert("No results found to export.");
+      return;
+    }
+
+    setIsExporting(true);
+
+    setTimeout(() => {
+      const dataToExport = filteredResults.map(res => {
+        const obj: any = {
+          date: res.drawDate,
+          draw: res.drawNumber,
+          provider: res.provider,
+          type: res.type
+        };
+        if (exportConfig.includeMain) {
+          obj.first = res.first;
+          obj.second = res.second || '';
+          obj.third = res.third || '';
+        }
+        if (exportConfig.includeSpecial) {
+          obj.specials = res.specials?.join(' ') || '';
+        }
+        if (exportConfig.includeConsolation) {
+          obj.consolations = res.consolations?.join(' ') || '';
+        }
+        return obj;
+      });
+
+      if (exportConfig.format === 'JSON') {
+        const content = JSON.stringify(dataToExport, null, 2);
+        triggerDownload(`4D_Nexus_Archive_${selectedYear}.json`, content, 'application/json');
+      } else if (exportConfig.format === 'CSV') {
+        const headers = Object.keys(dataToExport[0]);
+        const csvRows = [
+          headers.join(','),
+          ...dataToExport.map((row: any) => 
+            headers.map(fieldName => JSON.stringify(row[fieldName], (key, value) => value ?? '')).join(',')
+          )
+        ];
+        triggerDownload(`4D_Nexus_Archive_${selectedYear}.csv`, csvRows.join('\r\n'), 'text/csv');
+      }
+
+      setIsExporting(false);
+      setShowExportModal(false);
+    }, 1500);
   };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
       {showExportModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowExportModal(false)}></div>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => !isExporting && setShowExportModal(false)}></div>
           <div className="relative w-full max-w-md glass rounded-[2.5rem] border border-white/10 p-8 space-y-8 animate-in zoom-in duration-300">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-orbitron font-bold flex items-center gap-3">
                 <Download size={20} className="text-blue-500" />
                 Export Protocol
               </h3>
-              <button onClick={() => setShowExportModal(false)} className="p-2 text-slate-500 hover:text-white transition-colors">
-                <X size={20} />
-              </button>
+              {!isExporting && (
+                <button onClick={() => setShowExportModal(false)} className="p-2 text-slate-500 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              )}
             </div>
 
             <div className="space-y-6">
@@ -122,6 +286,7 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                   ].map((field) => (
                     <button 
                       key={field.key}
+                      disabled={isExporting}
                       onClick={() => setExportConfig({...exportConfig, [field.key]: !exportConfig[field.key]})}
                       className={`flex items-center justify-between p-4 rounded-xl border transition-all ${exportConfig[field.key] ? 'bg-blue-600/10 border-blue-500/30 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}
                     >
@@ -141,6 +306,7 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                   {(['CSV', 'JSON', 'PDF'] as const).map(fmt => (
                     <button 
                       key={fmt}
+                      disabled={isExporting}
                       onClick={() => setExportConfig({...exportConfig, format: fmt})}
                       className={`flex-1 py-3 rounded-xl border text-[10px] font-black tracking-widest transition-all ${exportConfig.format === fmt ? 'bg-blue-600 text-white border-blue-400' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
                     >
@@ -151,8 +317,20 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
               </div>
             </div>
 
-            <ShadowButton onClick={handleExport} variant="primary" className="w-full py-4 text-xs font-black uppercase tracking-widest">
-              Initiate Secure Download
+            <ShadowButton 
+              onClick={handleExport} 
+              variant="primary" 
+              disabled={isExporting}
+              className="w-full py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  SEALING PACKETS...
+                </>
+              ) : (
+                'Initiate Secure Download'
+              )}
             </ShadowButton>
           </div>
         </div>
@@ -167,193 +345,297 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
           <div className="flex flex-wrap items-center gap-4 mt-2">
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-               <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Local Cache: {cacheStatus.status}</span>
+               <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Archive Sync: {cacheStatus.status}</span>
             </div>
             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
                <Server size={12} className="text-slate-600" />
-               Node: {cacheStatus.node}
+               Consensus Node: {cacheStatus.node}
             </div>
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-6 py-2.5 rounded-xl glass border border-white/10 text-[10px] font-black uppercase tracking-widest hover:border-blue-500/30 transition-all text-blue-400">
+          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-6 py-2.5 rounded-xl glass border border-white/10 text-[10px] font-black uppercase tracking-widest hover:border-blue-500/30 transition-all text-blue-400 shadow-lg">
             <Download size={14} /> EXPORT DATA
           </button>
         </div>
       </div>
 
-      <div className="glass p-8 rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/5 to-transparent space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="md:col-span-2 relative">
-            <input 
-              type="text" 
-              maxLength={4}
-              placeholder="Query historical number (e.g. 8888)..."
-              value={searchNumber}
-              onChange={(e) => setSearchNumber(e.target.value.replace(/\D/g, ''))}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-5 text-sm font-orbitron focus:outline-none focus:border-blue-500/50 transition-all text-white placeholder:text-slate-700"
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-            {searchNumber && (
-              <button onClick={() => setSearchNumber('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase text-blue-500 hover:text-white bg-blue-500/10 px-2 py-1 rounded">CLEAR</button>
-            )}
-          </div>
-
-          <div className="relative">
-            <select 
-              value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value as any)}
-              className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-xs font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white"
-            >
-              <option value="All">All Operators</option>
-              {Object.values(LotteryProvider).map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-          </div>
-
-          <div className="relative">
-            <select 
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-xs font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white"
-            >
-              {['2024', '2023', '2022', '2021', '2020'].map(y => (
-                <option key={y} value={y}>{y} Series</option>
-              ))}
-            </select>
-            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-6">
-           <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest mr-4">Cycle Type:</span>
-           {(['All', 'Wed', 'Sat', 'Sun', 'Special'] as const).map(day => (
-             <button
-               key={day}
-               onClick={() => setDrawDayFilter(day)}
-               className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${drawDayFilter === day ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
-             >
-               {day === 'All' ? 'Full Archive' : day === 'Special' ? 'Special Draw' : `${day} Cycle`}
-             </button>
-           ))}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.4em]">
-                {filteredResults.length} Result Signatures Match Query
-              </span>
-              {searchNumber && (
-                <div className="flex items-center gap-1.5 text-[9px] font-black text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 animate-pulse">
-                  <Zap size={10} /> Neural Highlights Active
-                </div>
-              )}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Enhanced Filter & Search Console */}
+          <div className="glass p-8 rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/5 to-transparent space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2 relative group">
+                <input 
+                  type="text" 
+                  maxLength={4}
+                  placeholder="Scan specific number (e.g. 8888)..."
+                  value={searchNumber}
+                  onChange={(e) => setSearchNumber(e.target.value.replace(/\D/g, ''))}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-5 text-sm font-orbitron focus:outline-none focus:border-blue-500/50 transition-all text-white placeholder:text-slate-700"
+                />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-blue-500 transition-colors" size={20} />
+                
+                {searchNumber && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    {showClearConfirm ? (
+                      <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
+                        <button 
+                          onClick={() => { setSearchNumber(''); setShowClearConfirm(false); }}
+                          className="text-[9px] font-black uppercase text-white bg-red-600 px-3 py-1 rounded shadow-lg"
+                        >
+                          WIPE QUERY
+                        </button>
+                        <button onClick={() => setShowClearConfirm(false)} className="text-slate-500"><X size={14}/></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowClearConfirm(true)} className="text-[9px] font-black uppercase text-blue-500 hover:text-white bg-blue-500/10 px-2 py-1 rounded transition-all">CLEAR</button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <Tooltip text="Isolates signatures from a specific legal operator archive.">
+                  <div className="relative h-full">
+                    <select 
+                      value={selectedProvider}
+                      onChange={(e) => setSelectedProvider(e.target.value as any)}
+                      className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white cursor-pointer"
+                    >
+                      <option value="All">All Operators</option>
+                      {Object.values(LotteryProvider).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
+                  </div>
+                </Tooltip>
+              </div>
+
+              <div className="relative">
+                <Tooltip text="Selects data packets from a specific archival temporal range.">
+                  <div className="relative h-full">
+                    <select 
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white cursor-pointer"
+                    >
+                      {['2024', '2023', '2022', '2021', '2020'].map(y => (
+                        <option key={y} value={y}>{y} Series</option>
+                      ))}
+                    </select>
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
+                  </div>
+                </Tooltip>
+              </div>
             </div>
-            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-               Handshake latency: 24ms
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-6">
+               <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mr-4">Cycle Type:</span>
+               {(['All', 'Wed', 'Sat', 'Sun', 'Special'] as const).map(day => (
+                 <Tooltip key={day} text={day === 'All' ? 'View the complete historical feed without temporal filtering.' : `Display only results from ${day} draw cycles.`}>
+                   <button
+                     onClick={() => setDrawDayFilter(day)}
+                     className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${drawDayFilter === day ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+                   >
+                     {day === 'All' ? 'Full Archive' : day === 'Special' ? 'Special Draw' : `${day} Cycle`}
+                   </button>
+                 </Tooltip>
+               ))}
             </div>
           </div>
 
           <div className="space-y-6">
-            {filteredResults.length > 0 ? (
-              filteredResults.map((res, i) => (
-                <ResultCard 
-                  key={i} 
-                  result={res} 
-                  lang={lang} 
-                  isLoggedIn={isLoggedIn} 
-                  onGuestAttempt={onGuestAttempt} 
-                  highlightQuery={searchNumber}
-                />
-              ))
-            ) : (
-              <div className="glass rounded-[2.5rem] p-24 text-center border border-dashed border-white/10 relative overflow-hidden">
-                <div className="absolute inset-0 bg-blue-600/[0.02] animate-pulse"></div>
-                <Database className="mx-auto text-slate-800 mb-6 relative z-10" size={64} />
-                <h3 className="text-2xl font-orbitron font-bold text-slate-500 relative z-10">Signature Mismatch</h3>
-                <p className="text-xs text-slate-600 mt-3 max-w-sm mx-auto leading-relaxed relative z-10">The requested data fragment does not reside in the local cache nodes.</p>
-                
-                <div className="mt-10 max-w-xs mx-auto space-y-4 relative z-10">
-                  {isScanning ? (
-                    <div className="space-y-5 animate-in fade-in duration-500">
-                       <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-500">
-                          <span className="flex items-center gap-2">
-                            <Activity size={12} className="animate-pulse" /> 
-                            {scanStage}
-                          </span>
-                          <span className="font-orbitron">{scanProgress}%</span>
-                       </div>
-                       <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-0.5">
-                          <div 
-                            className="h-full bg-blue-600 transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.6)] rounded-full"
-                            style={{ width: `${scanProgress}%` }}
-                          />
-                       </div>
-                    </div>
-                  ) : (
-                    <ShadowButton onClick={handleDeepScan} variant="primary" className="w-full py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3">
-                      <Globe size={18} /> INITIATE DEEP CLOUD SCAN
-                    </ShadowButton>
-                  )}
-                </div>
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.4em]">
+                  {filteredResults.length} Node Signatures Found
+                </span>
+                {searchNumber && (
+                  <div className="flex items-center gap-1.5 text-[9px] font-black text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 animate-pulse">
+                    <Zap size={10} /> Neural Lookup Active
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            <div className="space-y-6">
+              {filteredResults.length > 0 ? (
+                filteredResults.map((res, i) => (
+                  <ResultCard 
+                    key={`${res.provider}-${res.drawDate}-${i}`} 
+                    result={res} 
+                    lang={lang} 
+                    isLoggedIn={isLoggedIn} 
+                    onGuestAttempt={onGuestAttempt} 
+                    highlightQuery={searchNumber}
+                  />
+                ))
+              ) : (
+                <div className="glass rounded-[3rem] p-24 text-center border border-dashed border-white/10 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-blue-600/[0.01] group-hover:bg-blue-600/[0.03] transition-colors" />
+                  <Database className="mx-auto text-slate-800 mb-6 relative z-10" size={64} />
+                  <h3 className="text-2xl font-orbitron font-bold text-slate-600 relative z-10">Data Mismatch</h3>
+                  <p className="text-xs text-slate-600 mt-3 max-w-sm mx-auto leading-relaxed relative z-10 font-medium">The requested signal packet does not reside in the current local series. Initiate a cloud sync?</p>
+                  
+                  <div className="mt-10 max-w-xs mx-auto space-y-4 relative z-10">
+                    {isScanning ? (
+                      <div className="space-y-5 animate-in fade-in duration-500">
+                         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-500">
+                            <span className="flex items-center gap-2">
+                              <Loader2 size={12} className="animate-spin" /> 
+                              {scanStage}
+                            </span>
+                            <span className="font-orbitron">{scanProgress}%</span>
+                         </div>
+                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-0.5">
+                            <div 
+                              className="h-full bg-blue-600 transition-all duration-300 shadow-[0_0_15px_rgba(59,130,246,0.6)] rounded-full"
+                              style={{ width: `${scanProgress}%` }}
+                            />
+                         </div>
+                      </div>
+                    ) : (
+                      <ShadowButton onClick={handleDeepScan} variant="primary" className="w-full py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3">
+                        <Globe size={18} /> INITIATE DEEP CLOUD SYNC
+                      </ShadowButton>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Sidebar Controls in Archive */}
         <div className="space-y-8">
+          {/* Watchlist Monitor Console */}
+          <div className="glass p-8 rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-600/5 to-transparent space-y-6">
+             <div className="flex justify-between items-center">
+                <h3 className="text-lg font-orbitron font-bold flex items-center gap-3 text-white">
+                  <Target className="text-amber-500" size={20} />
+                  My Signatures
+                </h3>
+                {!isLoggedIn && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 rounded border border-red-500/20">
+                    <ShieldAlert size={10} className="text-red-500" />
+                    <span className="text-[7px] font-black text-red-500 uppercase tracking-tighter">Locked</span>
+                  </div>
+                )}
+             </div>
+
+             <div className="space-y-4">
+                <div className="relative group">
+                   <input 
+                     type="text" 
+                     maxLength={4}
+                     placeholder="Register Number..."
+                     value={monitorNum}
+                     onChange={(e) => setMonitorNum(e.target.value.replace(/\D/g, ''))}
+                     disabled={!isLoggedIn}
+                     className="w-full bg-black/60 border border-white/10 rounded-xl px-10 py-3 text-xs font-orbitron tracking-[0.3em] focus:outline-none focus:border-amber-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                   />
+                   <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-amber-500 transition-colors" size={16} />
+                </div>
+
+                <div className="relative">
+                   <select 
+                     value={monitorProvider}
+                     onChange={(e) => setMonitorProvider(e.target.value as any)}
+                     disabled={!isLoggedIn}
+                     className="w-full bg-black/60 border border-white/10 rounded-xl px-10 py-3 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-amber-500/50 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                   >
+                     <option value="All">All Archives</option>
+                     {Object.values(LotteryProvider).map(p => (
+                       <option key={p} value={p}>{p}</option>
+                     ))}
+                   </select>
+                   <Settings className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
+                   <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-700" size={14} />
+                </div>
+
+                <ShadowButton 
+                  onClick={handleMonitorAdd}
+                  variant="gold"
+                  disabled={!isLoggedIn || monitorNum.length !== 4}
+                  className="w-full py-3.5 text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                >
+                  <Plus size={16} /> MONITOR NODE
+                </ShadowButton>
+             </div>
+
+             <div className="pt-4 border-t border-white/5 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                {watchedNumbers.length > 0 ? (
+                  watchedNumbers.map((entry) => (
+                    <div key={entry.id} className="p-3.5 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group/item hover:border-blue-500/30 transition-all hover:bg-white/[0.08]">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-blue-600/10 flex flex-col items-center justify-center font-orbitron font-bold text-blue-400 border border-blue-500/20 shadow-lg">
+                           <span className="text-xs">{entry.number}</span>
+                           <span className="text-[6px] opacity-40 -mt-0.5">ACTIVE</span>
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[9px] font-black text-slate-300 uppercase truncate max-w-[100px] tracking-widest">{entry.provider}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-[7px] font-black text-slate-500 uppercase">Live Watch</span>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleRemoveWatched(entry.id)}
+                        className="p-2 text-slate-700 hover:text-red-500 transition-all md:opacity-0 group-hover/item:opacity-100"
+                        title="Deregister node"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-12 text-center space-y-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                     <Bell size={40} className="mx-auto text-slate-600" />
+                     <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">No active signatures</p>
+                  </div>
+                )}
+             </div>
+
+             <div className="flex items-center gap-2 pt-2 px-2">
+                <Info size={12} className="text-slate-700" />
+                <p className="text-[8px] text-slate-600 uppercase font-black leading-tight italic">Matches trigger a system-wide high-priority neural notification.</p>
+             </div>
+          </div>
+
+          {/* Quick Intelligence Panel */}
           <div className="glass p-8 rounded-[2rem] border border-white/10 space-y-6 relative overflow-hidden">
-             <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 blur-2xl rounded-full"></div>
              <h3 className="text-lg font-orbitron font-bold flex items-center gap-3 text-white">
                 <TrendingUp className="text-green-500" size={20} />
                 Cloud Intelligence
              </h3>
              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-default">
-                   <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest">Global Freq Cluster</p>
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-default group/intel">
+                   <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest group-hover/intel:text-blue-400 transition-colors">Global Freq Cluster</p>
                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-orbitron font-bold text-blue-400">2518</span>
-                      <span className="text-[10px] font-black bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20">12 Hits</span>
+                      <span className="text-2xl font-orbitron font-bold text-white">2518</span>
+                      <span className="text-[10px] font-black bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 flex items-center gap-1">
+                        <Activity size={10} /> 12 Hits
+                      </span>
                    </div>
                 </div>
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-default">
-                   <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest">Dormant "Sub-Zero" Void</p>
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-default group/intel">
+                   <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest group-hover/intel:text-red-400 transition-colors">Dormant "Sub-Zero" Void</p>
                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-orbitron font-bold text-red-500">0944</span>
-                      <span className="text-[10px] font-black bg-red-600/20 text-red-500 px-3 py-1 rounded-full border border-red-500/20">420 Days</span>
+                      <span className="text-2xl font-orbitron font-bold text-white">0944</span>
+                      <span className="text-[10px] font-black bg-red-600/20 text-red-500 px-3 py-1 rounded-full border border-red-500/20 flex items-center gap-1">
+                         <ShieldAlert size={10} /> 420 Days
+                      </span>
                    </div>
                 </div>
              </div>
-             <div className="p-5 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex gap-4 items-start">
-                <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-blue-100 leading-relaxed italic opacity-80">
-                  Scanning over 10.4 million historical data points across 16 global operators to determine positional void resonance.
-                </p>
-             </div>
-          </div>
-
-          <div className="glass p-8 rounded-[2rem] border border-white/10 space-y-4">
-             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6 px-1">Network Forensics</h3>
-             <div className="space-y-3">
-                {[
-                  { icon: Server, label: 'Origin Node', value: cacheStatus.node },
-                  { icon: ShieldCheck, label: 'Integrity', value: cacheStatus.integrity },
-                  { icon: Clock, label: 'Last Sync', value: cacheStatus.lastSync }
-                ].map((item, i) => (
-                  <div key={i} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-white/10 transition-all">
-                     <div className="flex items-center gap-3">
-                        <item.icon size={16} className="text-slate-600" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.label}</span>
-                     </div>
-                     <span className="text-[10px] font-black text-white font-orbitron">{item.value}</span>
-                  </div>
-                ))}
-             </div>
+             <button className="w-full py-3 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-all flex items-center justify-center gap-2">
+                Open Deep Matrix <ArrowUpRight size={12}/>
+             </button>
           </div>
         </div>
       </div>

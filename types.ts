@@ -51,6 +51,17 @@ export interface User {
   avatarId: number;
 }
 
+export interface Seller {
+  id: string;
+  name: string;
+  address: string;
+  country: string;
+  zipCode: string;
+  contactPerson: string;
+  contactNumber: string;
+  coordinates: { lat: number; lng: number };
+}
+
 export interface StatisticalData {
   number: string;
   frequency: number;

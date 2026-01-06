@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LotteryProvider, LotteryResult, StatisticalData, LotteryNews, LeaderboardEntry } from './types';
+import { LotteryProvider, LotteryResult, StatisticalData, LotteryNews, LeaderboardEntry, Seller } from './types';
 
 // Helper to generate dates relative to today
 const getRelativeDate = (daysAgo: number) => {
@@ -8,6 +8,49 @@ const getRelativeDate = (daysAgo: number) => {
   d.setDate(d.getDate() - daysAgo);
   return d.toISOString().split('T')[0];
 };
+
+export const MOCK_SELLERS: Seller[] = [
+  {
+    id: 's1',
+    name: 'Nexus KL Sentral Terminal',
+    address: 'Level 1, KL Sentral, 50470 Kuala Lumpur',
+    country: 'Malaysia',
+    zipCode: '50470',
+    contactPerson: 'Mr. Wong',
+    contactNumber: '+60 12-345 6789',
+    coordinates: { lat: 3.1344, lng: 101.6865 }
+  },
+  {
+    id: 's2',
+    name: 'Bukit Bintang Digital Node',
+    address: 'Lot 10, Jalan Sultan Ismail, 50250 Kuala Lumpur',
+    country: 'Malaysia',
+    zipCode: '50250',
+    contactPerson: 'Ms. Sarah Lee',
+    contactNumber: '+60 17-988 2211',
+    coordinates: { lat: 3.1472, lng: 101.7101 }
+  },
+  {
+    id: 's3',
+    name: 'Orchard Plaza Hub',
+    address: '150 Orchard Road, Singapore 238841',
+    country: 'Singapore',
+    zipCode: '238841',
+    contactPerson: 'David Chen',
+    contactNumber: '+65 6734 1122',
+    coordinates: { lat: 1.3008, lng: 103.8407 }
+  },
+  {
+    id: 's4',
+    name: 'Johor Bahru Gateway',
+    address: 'JB Sentral, Bukit Chagar, 80300 Johor Bahru',
+    country: 'Malaysia',
+    zipCode: '80300',
+    contactPerson: 'Raju Krishnan',
+    contactNumber: '+60 11-2233 4455',
+    coordinates: { lat: 1.4622, lng: 103.7644 }
+  }
+];
 
 // Generate a rich set of results for the last 7 days to ensure "near-time" availability
 const generateRecentResults = (): LotteryResult[] => {
@@ -118,6 +161,7 @@ export const LANGUAGES = {
       dashboard: 'Dashboard',
       stats: 'Deep Analytics',
       archive: 'History Archive',
+      sellers: 'Seller Network',
       favorites: 'My Library',
       community: 'Live Community',
       challenges: 'Oracle Rankings',
@@ -164,6 +208,7 @@ export const LANGUAGES = {
       dashboard: '仪表板',
       stats: '深度分析',
       archive: '历史存档',
+      sellers: '销售网络',
       favorites: '我的收藏',
       community: '实时社区',
       challenges: '神谕排行',
@@ -210,6 +255,7 @@ export const LANGUAGES = {
       dashboard: 'Papan Pemuka',
       stats: 'Analitik Mendalam',
       archive: 'Arkib Sejarah',
+      sellers: 'Rangkaian Penjual',
       favorites: 'Perpustakaan Saya',
       community: 'Komuniti Langsung',
       challenges: 'Kedudukan Oracle',
