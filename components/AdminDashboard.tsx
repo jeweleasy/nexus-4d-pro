@@ -18,47 +18,143 @@ import {
   CloudLightning,
   Flag,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  KeyRound,
+  Building,
+  Crown,
+  ChevronRight,
+  ShieldCheck,
+  UserCheck,
+  XCircle,
+  PlusCircle,
+  MapPin,
+  Phone,
+  User,
+  // Added Loader2 to fix the reference error on line 225
+  Loader2
 } from 'lucide-react';
 import { ShadowButton } from './ShadowButton';
+import { Seller } from '../types';
+import { MOCK_SELLERS } from '../constants';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'system' | 'moderation'>('system');
-  const [syncing, setSyncing] = useState(false);
-  const [reports, setReports] = useState<any[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminCreds, setAdminCreds] = useState({ user: '', pass: '' });
+  const [activeTab, setActiveTab] = useState<'terminals' | 'approvals' | 'system'>('terminals');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    const queue = JSON.parse(localStorage.getItem('nexus_moderation_queue') || '[]');
-    setReports(queue);
-  }, [activeTab]);
+  // Seller Key-In Form State
+  const [newTerminal, setNewTerminal] = useState<Omit<Seller, 'id' | 'coordinates'>>({
+    name: '',
+    address: '',
+    country: 'Malaysia',
+    zipCode: '',
+    contactPerson: '',
+    contactNumber: ''
+  });
 
-  const [nodes, setNodes] = useState([
-    { id: 'MY-KL-01', provider: 'Magnum 4D', status: 'ONLINE', latency: '42ms', load: 12 },
-    { id: 'MY-KL-02', provider: 'Sports Toto', status: 'ONLINE', latency: '38ms', load: 8 },
-    { id: 'MY-KL-03', provider: 'Da Ma Cai', status: 'MAINTENANCE', latency: '-', load: 0 },
-    { id: 'SG-PO-01', provider: 'Singapore Pools', status: 'ONLINE', latency: '24ms', load: 15 },
+  // Mock Elite Requests
+  const [eliteRequests, setEliteRequests] = useState([
+    { id: 'req-01', nexusId: 'CryptoKing_99', email: 'crypto@web3.io', date: '2024-10-24', status: 'pending' },
+    { id: 'req-02', nexusId: 'DataDrifter', email: 'drifter@nexus.com', date: '2024-10-23', status: 'pending' },
+    { id: 'req-03', nexusId: 'TotoTitan', email: 'titan@gmail.com', date: '2024-10-24', status: 'pending' },
   ]);
 
-  const [logs, setLogs] = useState([
-    { time: '14:22:01', msg: 'Primary source MAGNUM sync successful.', status: 'success' },
-    { time: '14:21:45', msg: 'ML Model Re-training cycle initiated.', status: 'info' },
-    { time: '14:18:22', msg: 'Backup source 4D88.asia failover triggered.', status: 'warning' },
-    { time: '14:15:00', msg: 'System wide backup completed.', status: 'success' },
-  ]);
-
-  const handleGlobalSync = () => {
-    setSyncing(true);
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    // Simulate auth handshake
     setTimeout(() => {
-      setSyncing(false);
-      setLogs(prev => [{ time: new Date().toLocaleTimeString(), msg: 'MANUAL GLOBAL SYNC COMPLETED.', status: 'success' }, ...prev]);
-    }, 2000);
+      if (adminCreds.user === 'nexus_admin' && adminCreds.pass === 'nexus_ops_2025') {
+        setIsAuthenticated(true);
+      } else {
+        setError('Neural Signature Mismatch: Invalid Credentials');
+      }
+      setLoading(false);
+    }, 1200);
   };
 
-  const clearReport = (id: string) => {
-    const newReports = reports.filter(r => r.id !== id);
-    setReports(newReports);
-    localStorage.setItem('nexus_moderation_queue', JSON.stringify(newReports));
+  const handleApproveElite = (id: string) => {
+    setEliteRequests(prev => prev.filter(req => req.id !== id));
+    alert("Node Escalation Successful: User promoted to Nexus Elite.");
   };
+
+  const handleSellerKeyIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      alert("Terminal Synchronized: New seller node added to global network.");
+      setNewTerminal({ name: '', address: '', country: 'Malaysia', zipCode: '', contactPerson: '', contactNumber: '' });
+      setLoading(false);
+    }, 1000);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto py-20 animate-in fade-in zoom-in duration-500">
+        <div className="glass p-10 rounded-[3rem] border border-blue-500/20 shadow-2xl space-y-8 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-600/10 blur-3xl rounded-full"></div>
+          
+          <div className="text-center space-y-3">
+             <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center mx-auto border border-blue-500/20 mb-4">
+                <Lock size={40} className="text-blue-500" />
+             </div>
+             <h2 className="text-2xl font-orbitron font-bold">Admin Authority</h2>
+             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-relaxed">Identity Handshake Required for Command Access</p>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="space-y-5">
+             <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest px-2">Operator ID</label>
+                <div className="relative">
+                   <input 
+                     required
+                     type="text" 
+                     placeholder="nexus_admin"
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
+                     value={adminCreds.user}
+                     onChange={e => setAdminCreds({...adminCreds, user: e.target.value})}
+                   />
+                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
+                </div>
+             </div>
+             <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest px-2">Access Cipher</label>
+                <div className="relative">
+                   <input 
+                     required
+                     type="password" 
+                     placeholder="••••••••••••"
+                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-4 text-sm focus:border-blue-500/50 outline-none transition-all"
+                     value={adminCreds.pass}
+                     onChange={e => setAdminCreds({...adminCreds, pass: e.target.value})}
+                   />
+                   <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
+                </div>
+             </div>
+
+             {error && (
+               <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-2 animate-in slide-in-from-top-2">
+                  <ShieldAlert className="text-red-500" size={14} />
+                  <p className="text-[10px] font-bold text-red-200 uppercase">{error}</p>
+               </div>
+             )}
+
+             <ShadowButton variant="primary" className="w-full py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2" disabled={loading}>
+                {loading ? <RefreshCw size={16} className="animate-spin" /> : <Power size={16} />}
+                {loading ? 'Validating Quorum...' : 'Authorize Node Access'}
+             </ShadowButton>
+          </form>
+          
+          <p className="text-[8px] text-center text-slate-600 uppercase font-black tracking-tighter">Nexus Ops &bull; Authorized Personnel Only</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -66,22 +162,164 @@ export const AdminDashboard: React.FC = () => {
         <div>
           <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3">
             <div className="nexus-line nexus-line-purple"></div>
-            Nexus Command
+            Nexus Command Hub
           </h2>
-          <div className="flex gap-4 mt-2">
-             <button onClick={() => setActiveTab('system')} className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'system' ? 'text-purple-400 border-b-2 border-purple-500' : 'text-slate-500 hover:text-slate-300'}`}>System Node</button>
-             <button onClick={() => setActiveTab('moderation')} className={`text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'moderation' ? 'text-red-400 border-b-2 border-red-500' : 'text-slate-500 hover:text-slate-300'}`}>Moderation Node</button>
+          <div className="flex gap-6 mt-4">
+             {[
+               { id: 'terminals', label: 'Terminal Dispatch', icon: Building },
+               { id: 'approvals', label: 'Elite Escalations', icon: Crown },
+               { id: 'system', label: 'System Vitals', icon: Activity }
+             ].map((tab) => (
+               <button 
+                 key={tab.id}
+                 onClick={() => setActiveTab(tab.id as any)} 
+                 className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all pb-2 border-b-2 ${activeTab === tab.id ? 'text-blue-500 border-blue-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+               >
+                 <tab.icon size={14} />
+                 {tab.label}
+               </button>
+             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <ShadowButton onClick={handleGlobalSync} variant="primary" className="flex items-center gap-2 py-2 text-xs">
-            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing...' : 'Force Sync'}
-          </ShadowButton>
-        </div>
+        <button onClick={() => setIsAuthenticated(false)} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-red-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
+          <Power size={16} /> Logout
+        </button>
       </div>
 
-      {activeTab === 'system' ? (
+      {activeTab === 'terminals' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in slide-in-from-bottom-4">
+           <div className="lg:col-span-1 space-y-6">
+              <div className="glass p-8 rounded-[2.5rem] border border-blue-500/20 bg-blue-600/5 space-y-6">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-blue-600/10 text-blue-500">
+                       <PlusCircle size={24} />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-orbitron font-bold">New Node Sync</h3>
+                       <p className="text-[10px] text-slate-500 font-black uppercase">Key In Seller Metadata</p>
+                    </div>
+                 </div>
+
+                 <form onSubmit={handleSellerKeyIn} className="space-y-4">
+                    <div className="space-y-3">
+                       <div className="relative group">
+                          <input required placeholder="Terminal Full Name" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs focus:border-blue-500/50 outline-none" value={newTerminal.name} onChange={e => setNewTerminal({...newTerminal, name: e.target.value})} />
+                       </div>
+                       <div className="relative group">
+                          <textarea required placeholder="Global Node Address" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs focus:border-blue-500/50 outline-none h-24" value={newTerminal.address} onChange={e => setNewTerminal({...newTerminal, address: e.target.value})} />
+                       </div>
+                       <div className="grid grid-cols-2 gap-3">
+                          <select className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs focus:border-blue-500/50 outline-none text-slate-300" value={newTerminal.country} onChange={e => setNewTerminal({...newTerminal, country: e.target.value})}>
+                             <option>Malaysia</option>
+                             <option>Singapore</option>
+                             <option>Cambodia</option>
+                          </select>
+                          <input required placeholder="Zip Code" className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs focus:border-blue-500/50 outline-none" value={newTerminal.zipCode} onChange={e => setNewTerminal({...newTerminal, zipCode: e.target.value})} />
+                       </div>
+                       <div className="relative group">
+                          <input required placeholder="Authority Liaison Name" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs focus:border-blue-500/50 outline-none" value={newTerminal.contactPerson} onChange={e => setNewTerminal({...newTerminal, contactPerson: e.target.value})} />
+                       </div>
+                       <div className="relative group">
+                          <input required placeholder="Emergency Contact Signal" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs focus:border-blue-500/50 outline-none" value={newTerminal.contactNumber} onChange={e => setNewTerminal({...newTerminal, contactNumber: e.target.value})} />
+                       </div>
+                    </div>
+                    <ShadowButton variant="primary" className="w-full py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2" disabled={loading}>
+                       {loading ? <Loader2 size={16} className="animate-spin" /> : <PlusCircle size={16} />}
+                       Commission Terminal
+                    </ShadowButton>
+                 </form>
+              </div>
+           </div>
+
+           <div className="lg:col-span-2 space-y-6">
+              <div className="glass p-8 rounded-[2.5rem] border border-white/5 overflow-hidden">
+                 <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-xl font-orbitron font-bold flex items-center gap-3">
+                       <Server className="text-slate-500" size={24} />
+                       Terminal Registry
+                    </h3>
+                    <span className="text-[10px] font-black text-slate-500 uppercase">Total Nodes: {MOCK_SELLERS.length}</span>
+                 </div>
+                 <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+                    {MOCK_SELLERS.map((seller) => (
+                       <div key={seller.id} className="p-5 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group hover:border-blue-500/30 transition-all">
+                          <div className="flex items-center gap-4">
+                             <div className="w-12 h-12 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20">
+                                <Building size={24} />
+                             </div>
+                             <div>
+                                <h4 className="font-bold text-white text-sm">{seller.name}</h4>
+                                <div className="flex items-center gap-3 mt-1">
+                                   <p className="text-[9px] font-black text-slate-500 uppercase flex items-center gap-1"><MapPin size={10}/> {seller.zipCode}</p>
+                                   <span className="w-1 h-1 rounded-full bg-slate-800"></span>
+                                   <p className="text-[9px] font-black text-slate-500 uppercase flex items-center gap-1"><User size={10}/> {seller.contactPerson}</p>
+                                </div>
+                             </div>
+                          </div>
+                          <button className="p-3 rounded-xl bg-white/5 text-slate-500 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
+                             <Trash2 size={18} />
+                          </button>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'approvals' && (
+        <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4">
+           <div className="glass p-8 rounded-[3rem] border border-amber-500/20 bg-amber-500/5">
+              <div className="flex justify-between items-center mb-10">
+                 <div className="flex items-center gap-4">
+                    <div className="p-4 rounded-[2rem] bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                       <Crown size={32} />
+                    </div>
+                    <div>
+                       <h3 className="text-2xl font-orbitron font-bold">Quorum Escalations</h3>
+                       <p className="text-xs text-slate-500 font-medium">Approve standard nodes for Nexus Elite escalation.</p>
+                    </div>
+                 </div>
+                 <div className="px-5 py-2 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest">
+                    {eliteRequests.length} Pending Signatures
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                 {eliteRequests.length > 0 ? eliteRequests.map((req) => (
+                    <div key={req.id} className="p-6 rounded-[2rem] bg-white/5 border border-white/5 flex items-center justify-between hover:bg-white/10 transition-all group">
+                       <div className="flex items-center gap-6">
+                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${req.nexusId}`} className="w-14 h-14 rounded-2xl border border-white/10 bg-black" alt="Node" />
+                          <div className="space-y-1">
+                             <p className="text-lg font-orbitron font-bold text-white group-hover:text-amber-400 transition-colors">{req.nexusId}</p>
+                             <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                <span>{req.email}</span>
+                                <span className="text-slate-800">|</span>
+                                <span>Requested: {req.date}</span>
+                             </div>
+                          </div>
+                       </div>
+                       <div className="flex gap-3">
+                          <button onClick={() => setEliteRequests(prev => prev.filter(r => r.id !== req.id))} className="w-12 h-12 rounded-2xl bg-red-600/10 text-red-500 flex items-center justify-center border border-red-500/20 hover:bg-red-600/20 transition-all">
+                             <XCircle size={20} />
+                          </button>
+                          <ShadowButton variant="gold" onClick={() => handleApproveElite(req.id)} className="px-6 py-3 text-[10px] font-black uppercase flex items-center gap-2">
+                             <UserCheck size={16} /> Approve Access
+                          </ShadowButton>
+                       </div>
+                    </div>
+                 )) : (
+                    <div className="py-20 text-center space-y-4 border-2 border-dashed border-white/5 rounded-[2rem]">
+                       <ShieldCheck size={64} className="mx-auto text-slate-800" />
+                       <p className="text-slate-600 font-bold uppercase tracking-[0.3em]">Handshake Queue Empty</p>
+                    </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'system' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
@@ -100,7 +338,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 glass rounded-[2rem] p-8 border border-white/5 overflow-x-auto">
-               <h3 className="text-xl font-bold flex items-center gap-2 mb-6"><Database size={22} className="text-blue-400" /> Primary Nodes</h3>
+               <h3 className="text-xl font-bold flex items-center gap-2 mb-6"><Database size={22} className="text-blue-400" /> Primary Hubs</h3>
                <table className="w-full text-left">
                  <thead>
                     <tr className="text-[10px] font-black uppercase text-slate-500 border-b border-white/5">
@@ -110,9 +348,13 @@ export const AdminDashboard: React.FC = () => {
                     </tr>
                  </thead>
                  <tbody className="text-sm">
-                    {nodes.map((node, i) => (
+                    {[
+                      { id: 'MY-KL-01', status: 'ONLINE', latency: '42ms' },
+                      { id: 'MY-KL-02', status: 'ONLINE', latency: '38ms' },
+                      { id: 'SG-PO-01', status: 'ONLINE', latency: '24ms' },
+                    ].map((node, i) => (
                       <tr key={i} className="border-b border-white/5 last:border-0">
-                         <td className="py-4 font-mono text-xs">{node.id}</td>
+                         <td className="py-4 font-mono text-xs text-slate-300">{node.id}</td>
                          <td className={`py-4 text-[10px] font-black ${node.status === 'ONLINE' ? 'text-green-500' : 'text-amber-500'}`}>{node.status}</td>
                          <td className="py-4 font-mono text-xs text-slate-500">{node.latency}</td>
                       </tr>
@@ -121,57 +363,23 @@ export const AdminDashboard: React.FC = () => {
                </table>
             </div>
             <div className="glass rounded-[2rem] p-8 border border-white/5 h-[400px] flex flex-col">
-              <h3 className="text-lg font-bold flex items-center gap-2 mb-6"><Terminal size={20} className="text-blue-400" /> Streams</h3>
+              <h3 className="text-lg font-bold flex items-center gap-2 mb-6"><Terminal size={20} className="text-blue-400" /> Live Logs</h3>
               <div className="flex-1 overflow-y-auto space-y-2 font-mono text-xs p-4 bg-black/40 rounded-2xl border border-white/5 custom-scrollbar">
-                {logs.map((log, i) => (
+                {[
+                  { time: '14:22:01', msg: 'Seller node sync successful.' },
+                  { time: '14:21:45', msg: 'Escalation quorum reached.' },
+                  { time: '14:18:22', msg: 'Failover triggered.' },
+                  { time: '14:15:00', msg: 'Backup completed.' },
+                ].map((log, i) => (
                   <div key={i} className="flex gap-4 p-2 rounded transition-colors group">
                     <span className="text-slate-600 group-hover:text-slate-400">[{log.time}]</span>
-                    <span className={log.status === 'success' ? 'text-green-400' : 'text-blue-400'}>{log.msg}</span>
+                    <span className="text-blue-400">{log.msg}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
         </>
-      ) : (
-        <div className="glass rounded-[2.5rem] p-8 border border-red-500/10 space-y-6 animate-in slide-in-from-bottom-4">
-           <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-red-500"><Flag size={22}/> Moderation Queue</h3>
-              <span className="text-[10px] font-black bg-red-500/10 text-red-500 px-3 py-1 rounded-full uppercase">{reports.length} Critical Flags</span>
-           </div>
-           
-           {reports.length > 0 ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {reports.map((report, i) => (
-                 <div key={i} className="p-5 rounded-[1.5rem] bg-white/5 border border-white/10 space-y-3 group hover:border-red-500/30 transition-all">
-                    <div className="flex justify-between items-start">
-                       <div>
-                          <p className="text-[10px] font-black uppercase text-red-500">Reported Node: {report.user}</p>
-                          <p className="text-[9px] text-slate-500">Flagged by: {report.reportedBy}</p>
-                       </div>
-                       <p className="text-[8px] font-bold text-slate-600">{new Date(report.reportTime).toLocaleTimeString()}</p>
-                    </div>
-                    <div className="bg-black/40 p-3 rounded-xl border border-white/5 italic text-xs text-slate-300">
-                      "{report.text}"
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                       <button onClick={() => clearReport(report.id)} className="flex-1 py-2 rounded-xl bg-green-500/10 text-green-500 text-[9px] font-black uppercase hover:bg-green-500/20 transition-all flex items-center justify-center gap-2">
-                          <CheckCircle size={14}/> Dismiss
-                       </button>
-                       <button onClick={() => clearReport(report.id)} className="flex-1 py-2 rounded-xl bg-red-600/10 text-red-500 text-[9px] font-black uppercase hover:bg-red-600/20 transition-all flex items-center justify-center gap-2">
-                          <Trash2 size={14}/> Ban Node
-                       </button>
-                    </div>
-                 </div>
-               ))}
-             </div>
-           ) : (
-             <div className="py-20 text-center space-y-4">
-                <CheckCircle size={48} className="mx-auto text-slate-800" />
-                <p className="text-slate-500 font-bold uppercase tracking-widest">Global Community Healthy &bull; All Clear</p>
-             </div>
-           )}
-        </div>
       )}
     </div>
   );

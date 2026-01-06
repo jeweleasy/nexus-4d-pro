@@ -31,9 +31,10 @@ import {
   Bell,
   ShieldAlert,
   ChevronDown,
-  ArrowUpRight
+  ArrowUpRight,
+  Flame
 } from 'lucide-react';
-import { MOCK_RESULTS, LANGUAGES } from '../constants';
+import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from '../constants';
 import { ResultCard } from './ResultCard';
 import { LotteryProvider, LotteryResult } from '../types';
 import { ShadowButton } from './ShadowButton';
@@ -132,6 +133,18 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
       return matchProvider && matchNumber && matchYear && matchDay;
     }).sort((a, b) => b.timestamp - a.timestamp);
   }, [searchNumber, selectedProvider, selectedYear, drawDayFilter]);
+
+  // Real-time lookup statistics
+  const searchStats = useMemo(() => {
+    if (!searchNumber || searchNumber.length < 2) return null;
+    let hits = 0;
+    filteredResults.forEach(res => {
+      if (res.first === searchNumber || res.second === searchNumber || res.third === searchNumber) hits++;
+      if (res.specials?.includes(searchNumber)) hits++;
+      if (res.consolations?.includes(searchNumber)) hits++;
+    });
+    return { hits };
+  }, [searchNumber, filteredResults]);
 
   const handleMonitorAdd = () => {
     if (!isLoggedIn) {
@@ -362,88 +375,108 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          {/* Enhanced Filter & Search Console */}
-          <div className="glass p-8 rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/5 to-transparent space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2 relative group">
-                <input 
-                  type="text" 
-                  maxLength={4}
-                  placeholder="Scan specific number (e.g. 8888)..."
-                  value={searchNumber}
-                  onChange={(e) => setSearchNumber(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-5 text-sm font-orbitron focus:outline-none focus:border-blue-500/50 transition-all text-white placeholder:text-slate-700"
-                />
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-blue-500 transition-colors" size={20} />
-                
-                {searchNumber && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    {showClearConfirm ? (
-                      <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
-                        <button 
-                          onClick={() => { setSearchNumber(''); setShowClearConfirm(false); }}
-                          className="text-[9px] font-black uppercase text-white bg-red-600 px-3 py-1 rounded shadow-lg"
-                        >
-                          WIPE QUERY
-                        </button>
-                        <button onClick={() => setShowClearConfirm(false)} className="text-slate-500"><X size={14}/></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setShowClearConfirm(true)} className="text-[9px] font-black uppercase text-blue-500 hover:text-white bg-blue-500/10 px-2 py-1 rounded transition-all">CLEAR</button>
-                    )}
-                  </div>
-                )}
+          {/* Enhanced Neural Search Console */}
+          <div className="glass p-8 rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/5 to-transparent space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                 <div className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-500 tracking-[0.2em]">
+                    <Search size={14} /> 
+                    Neural Number Lookup
+                 </div>
+                 {searchStats && searchStats.hits > 0 && (
+                   <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 animate-in fade-in slide-in-from-right-2">
+                      <Flame size={12} className="text-amber-500" />
+                      <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Matches Found: {searchStats.hits} Hits</span>
+                   </div>
+                 )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-2 relative group">
+                  <input 
+                    type="text" 
+                    maxLength={4}
+                    placeholder="Scan specific number (e.g. 8888)..."
+                    value={searchNumber}
+                    onChange={(e) => setSearchNumber(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-5 text-sm font-orbitron focus:outline-none focus:border-blue-500/50 transition-all text-white placeholder:text-slate-700 shadow-inner group-focus-within:border-blue-500/40"
+                  />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  
+                  {searchNumber && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                      {showClearConfirm ? (
+                        <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
+                          <button 
+                            onClick={() => { setSearchNumber(''); setShowClearConfirm(false); }}
+                            className="text-[9px] font-black uppercase text-white bg-red-600 px-3 py-1 rounded shadow-lg"
+                          >
+                            WIPE
+                          </button>
+                          <button onClick={() => setShowClearConfirm(false)} className="text-slate-500"><X size={14}/></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowClearConfirm(true)} className="text-[9px] font-black uppercase text-blue-500 hover:text-white bg-blue-500/10 px-2 py-1 rounded transition-all">CLEAR</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <select 
+                    value={selectedProvider}
+                    onChange={(e) => setSelectedProvider(e.target.value as any)}
+                    className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white cursor-pointer"
+                  >
+                    <option value="All">All Operators</option>
+                    {Object.values(LotteryProvider).map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
+                </div>
+
+                <div className="relative">
+                  <select 
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white cursor-pointer"
+                  >
+                    {['2024', '2023', '2022', '2021', '2020'].map(y => (
+                      <option key={y} value={y}>{y} Series</option>
+                    ))}
+                  </select>
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
+                </div>
               </div>
 
-              <div className="relative">
-                <Tooltip text="Isolates signatures from a specific legal operator archive.">
-                  <div className="relative h-full">
-                    <select 
-                      value={selectedProvider}
-                      onChange={(e) => setSelectedProvider(e.target.value as any)}
-                      className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white cursor-pointer"
-                    >
-                      <option value="All">All Operators</option>
-                      {Object.values(LotteryProvider).map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
-                  </div>
-                </Tooltip>
-              </div>
-
-              <div className="relative">
-                <Tooltip text="Selects data packets from a specific archival temporal range.">
-                  <div className="relative h-full">
-                    <select 
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(e.target.value)}
-                      className="w-full h-full bg-black/40 border border-white/10 rounded-2xl px-10 py-4 text-[10px] font-black uppercase appearance-none focus:outline-none focus:border-blue-500/50 text-white cursor-pointer"
-                    >
-                      {['2024', '2023', '2022', '2021', '2020'].map(y => (
-                        <option key={y} value={y}>{y} Series</option>
-                      ))}
-                    </select>
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
-                  </div>
-                </Tooltip>
+              {/* Quick Search Chips */}
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                 <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mr-2">Frequent Signatures:</span>
+                 {HOT_NUMBERS.slice(0, 5).map(hot => (
+                   <button 
+                     key={hot.number}
+                     onClick={() => setSearchNumber(hot.number)}
+                     className={`px-3 py-1.5 rounded-full text-[9px] font-bold font-orbitron transition-all border ${searchNumber === hot.number ? 'bg-amber-500 text-black border-amber-400' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
+                   >
+                     {hot.number}
+                   </button>
+                 ))}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-6">
-               <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mr-4">Cycle Type:</span>
+               <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mr-4">Temporal Filter:</span>
                {(['All', 'Wed', 'Sat', 'Sun', 'Special'] as const).map(day => (
-                 <Tooltip key={day} text={day === 'All' ? 'View the complete historical feed without temporal filtering.' : `Display only results from ${day} draw cycles.`}>
-                   <button
-                     onClick={() => setDrawDayFilter(day)}
-                     className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${drawDayFilter === day ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
-                   >
-                     {day === 'All' ? 'Full Archive' : day === 'Special' ? 'Special Draw' : `${day} Cycle`}
-                   </button>
-                 </Tooltip>
+                 <button
+                   key={day}
+                   onClick={() => setDrawDayFilter(day)}
+                   className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${drawDayFilter === day ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+                 >
+                   {day === 'All' ? 'Full Archive' : day === 'Special' ? 'Special Draw' : `${day} Cycle`}
+                 </button>
                ))}
             </div>
           </div>
@@ -627,7 +660,7 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                    <p className="text-[9px] font-black uppercase text-slate-500 mb-1 tracking-widest group-hover/intel:text-red-400 transition-colors">Dormant "Sub-Zero" Void</p>
                    <div className="flex justify-between items-center">
                       <span className="text-2xl font-orbitron font-bold text-white">0944</span>
-                      <span className="text-[10px] font-black bg-red-600/20 text-red-500 px-3 py-1 rounded-full border border-red-500/20 flex items-center gap-1">
+                      <span className="text-[10px] font-black bg-red-600/20 text-red-500 px-3 py-1 rounded-full border border-blue-500/20 flex items-center gap-1">
                          <ShieldAlert size={10} /> 420 Days
                       </span>
                    </div>
