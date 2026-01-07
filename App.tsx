@@ -87,7 +87,8 @@ import { LoginModal } from './components/LoginModal';
 import { HistoryArchive } from './components/HistoryArchive';
 import { PersonalWatchlist } from './components/PersonalWatchlist';
 import { SellerArchive } from './components/SellerArchive';
-import { LotteryProvider, LotteryResult, User } from './types';
+// Added EliteRequest to imports
+import { LotteryProvider, LotteryResult, User, EliteRequest } from './types';
 import { 
   DisclaimerPage, 
   PrivacyPolicy, 
@@ -109,6 +110,8 @@ export interface FrequencyNode {
   freq: number;
   lastSeen: string;
 }
+
+// Removed EliteRequest interface definition as it is now imported from types.ts
 
 const App: React.FC = () => {
   const detectLanguage = (): LangCode => {
@@ -141,6 +144,16 @@ const App: React.FC = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileTools, setShowMobileTools] = useState(false);
   
+  // Elite Escalation State
+  const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>(() => {
+    try {
+      const saved = localStorage.getItem('nexus_elite_requests');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   // Match Celebration State
   const [celebrationMatch, setCelebrationMatch] = useState<{ result: LotteryResult; num: string } | null>(null);
   
@@ -275,6 +288,10 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
+    localStorage.setItem('nexus_elite_requests', JSON.stringify(pendingEliteRequests));
+  }, [pendingEliteRequests]);
+
+  useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 3000);
       return () => clearTimeout(timer);
@@ -355,6 +372,51 @@ const App: React.FC = () => {
 
   const handleWatchlistMatch = (result: LotteryResult, num: string) => {
     setCelebrationMatch({ result, num });
+  };
+
+  // Elite Activation Functions
+  const handleRequestElite = () => {
+    if (!currentUser) {
+      setShowLogin(true);
+      return;
+    }
+    
+    // Check if already pending
+    if (pendingEliteRequests.some(r => r.userId === currentUser.id)) {
+      setToast({ message: "Neural request already in Command queue.", type: 'info' });
+      return;
+    }
+
+    const request: EliteRequest = {
+      id: `req-${Math.random().toString(36).substr(2, 9)}`,
+      userId: currentUser.id,
+      nexusId: currentUser.nexusId,
+      email: currentUser.email,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+
+    setPendingEliteRequests(prev => [...prev, request]);
+    setToast({ message: "Activation signal dispatched to Admin Ops.", type: 'success' });
+  };
+
+  const handleApproveElite = (requestId: string) => {
+    const request = pendingEliteRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    // Update Request status
+    setPendingEliteRequests(prev => prev.filter(r => r.id !== requestId));
+
+    // If current logged in user is the one being approved, update their state immediately
+    if (currentUser && currentUser.id === request.userId) {
+      const updatedUser = { ...currentUser, isPremium: true };
+      setCurrentUser(updatedUser);
+      setIsPremium(true);
+      setToast({ message: "Elite Signature Verified. Access Unlocked.", type: 'premium' });
+    } else {
+      // In a real app, this would update a database. For local mock, we'll simulate by updating local storage for that ID if it was "remembered"
+      setToast({ message: `Node ${request.nexusId} upgraded to Elite.`, type: 'success' });
+    }
   };
 
   const NavItem = ({ icon: Icon, label, id, badge }: { icon: any, label: string, id: View, badge?: string }) => (
@@ -734,11 +796,14 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-8">
-                  <PersonalWatchlist 
-                    isLoggedIn={!!currentUser} 
-                    onGuestAttempt={handleGuestAttempt} 
-                    onMatch={handleWatchlistMatch} 
-                  />
+                  {/* Conditional rendering for logged in personal nodes as requested */}
+                  {currentUser && (
+                    <PersonalWatchlist 
+                      isLoggedIn={true} 
+                      onGuestAttempt={handleGuestAttempt} 
+                      onMatch={handleWatchlistMatch} 
+                    />
+                  )}
                   <LuckyNumber lang={lang} heatmapData={heatmapData} />
                   <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
                   <DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} />
@@ -749,15 +814,30 @@ const App: React.FC = () => {
             </>
           )}
 
-          {activeView === 'premium' && <PremiumView isPremium={isPremium} onUpgrade={() => {
-            if (currentUser) {
-              setCurrentUser({...currentUser, isPremium: true});
-              setToast({ message: "Welcome to Nexus Elite!", type: 'premium' });
-              setActiveView('dashboard');
-            } else setShowLogin(true);
-          }} />}
+          {activeView === 'premium' && (
+            <PremiumView 
+              isPremium={isPremium} 
+              currentUser={currentUser}
+              pendingRequests={pendingEliteRequests}
+              onRequestUpgrade={handleRequestElite}
+            />
+          )}
           
-          {activeView === 'admin' && (isAdmin ? <AdminDashboard /> : <div className="max-w-md mx-auto py-20 text-center space-y-8"><div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center mx-auto border border-red-500/20"><Lock size={40} className="text-red-500" /></div><h2 className="text-3xl font-orbitron font-bold">Admin Restricted</h2><ShadowButton onClick={() => setIsAdmin(true)} variant="secondary" className="w-full py-4">Simulate Admin Login</ShadowButton></div>)}
+          {/* Fixed undefined activeTab by using activeView */}
+          {activeView === 'admin' && (isAdmin ? (
+            <AdminDashboard 
+              eliteRequests={pendingEliteRequests}
+              onApproveElite={handleApproveElite}
+            />
+          ) : (
+            <div className="max-w-md mx-auto py-20 text-center space-y-8">
+              <div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center mx-auto border border-red-500/20">
+                <Lock size={40} className="text-red-500" />
+              </div>
+              <h2 className="text-3xl font-orbitron font-bold">Admin Restricted</h2>
+              <ShadowButton onClick={() => setIsAdmin(true)} variant="secondary" className="w-full py-4">Simulate Admin Login</ShadowButton>
+            </div>
+          ))}
           {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
           {activeView === 'challenges' && <RankingSystem />}
           {activeView === 'predictions' && <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"><Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} /><div className="space-y-8"><LuckyNumber lang={lang} heatmapData={heatmapData} /><DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div></div>}

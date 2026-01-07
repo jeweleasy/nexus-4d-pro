@@ -15,6 +15,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, on
   const [loading, setLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState(0);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     nexusId: '',
@@ -53,6 +54,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, on
 
   const handleInitialSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!privacyAccepted) return;
     setLoading(true);
     // Simulate sending email
     setTimeout(() => {
@@ -80,6 +82,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, on
       setLoading(false);
       onClose();
     }, 2000);
+  };
+
+  const togglePrivacy = () => {
+    setPrivacyAccepted(!privacyAccepted);
   };
 
   return (
@@ -158,13 +164,28 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, on
                     ))}
                   </div>
                 </div>
+                
+                <div className="px-1 py-2">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <div 
+                      onClick={togglePrivacy}
+                      className={`mt-0.5 w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${privacyAccepted ? 'bg-blue-600 border-blue-500' : 'border-white/20 group-hover:border-white/40'}`}
+                    >
+                      {privacyAccepted && <CheckCircle2 size={12} className="text-white" />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={privacyAccepted} readOnly />
+                    <span onClick={togglePrivacy} className="text-[10px] font-medium text-slate-400 leading-tight select-none">
+                      I agree to the <button type="button" className="text-blue-500 hover:underline font-bold">4D Nexus Pro Privacy Policy</button> and terms of node synchronization.
+                    </span>
+                  </label>
+                </div>
               </div>
 
-              <div className="pt-4 space-y-4">
+              <div className="pt-2 space-y-4">
                 <ShadowButton 
                   variant="primary" 
                   className="w-full py-5 flex items-center justify-center gap-3 relative overflow-hidden group"
-                  disabled={loading}
+                  disabled={loading || !privacyAccepted}
                 >
                   {loading ? (
                     <><Loader2 size={20} className="animate-spin" /> <span className="font-orbitron tracking-widest text-xs">DISPATCHING VERIFICATION...</span></>

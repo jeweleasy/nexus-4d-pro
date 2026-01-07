@@ -110,3 +110,13 @@ export interface LotteryNews {
   imagePrompt?: string;
   imageUrl?: string;
 }
+
+// Added EliteRequest to central types to fix component imports
+export interface EliteRequest {
+  id: string;
+  userId: string;
+  nexusId: string;
+  email: string;
+  timestamp: number;
+  status: 'pending' | 'approved' | 'rejected';
+}

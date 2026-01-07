@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Mail, Fingerprint, Lock, ShieldCheck, User, Loader2, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Zap, RefreshCw, ShieldAlert, KeyRound } from 'lucide-react';
+import { X, Mail, Fingerprint, Lock, ShieldCheck, User, Loader2, ArrowRight, AlertCircle, CheckCircle2, Sparkles, Zap, RefreshCw, ShieldAlert, KeyRound, ExternalLink } from 'lucide-react';
 import { ShadowButton } from './ShadowButton';
 import { NexusLogo } from './NexusLogo';
 import { User as NexusUser } from '../types';
@@ -23,6 +23,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('nexus_remember_flag') === 'true';
   });
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   
   const t = LANGUAGES[lang];
 
@@ -67,6 +68,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
       setView('form');
       setError(null);
       setShake(false);
+      setPrivacyAccepted(false);
     }
   }, [isOpen, rememberMe]);
 
@@ -93,6 +95,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
     // UI/Logic Validation
     if (stage === 1 && !formData.name.trim()) return triggerError("Operator Name required");
     if (stage === 1 && !validateEmail(formData.email)) return triggerError("Invalid Network Email");
+    if (stage === 1 && !privacyAccepted) return triggerError("Privacy Policy agreement required");
     if (!formData.nexusId.trim()) return triggerError("Unique Node ID required");
     if (formData.pin.some(d => d === '')) return triggerError("4-Digit Security PIN incomplete");
     if (parseInt(captchaInput) !== captcha.result) {
@@ -168,6 +171,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
 
   const toggleRememberMe = () => {
     setRememberMe(!rememberMe);
+  };
+
+  const togglePrivacy = () => {
+    setPrivacyAccepted(!privacyAccepted);
   };
 
   if (view === 'forgot-pin') {
@@ -343,7 +350,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-1">
+            {/* Privacy Agreement (Only for Activation stage) */}
+            {stage === 1 && (
+              <div className="px-1 py-1">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div 
+                    onClick={togglePrivacy}
+                    className={`mt-0.5 w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${privacyAccepted ? 'bg-blue-600 border-blue-500' : 'border-white/20 group-hover:border-white/40'}`}
+                  >
+                    {privacyAccepted && <CheckCircle2 size={12} className="text-white" />}
+                  </div>
+                  <input type="checkbox" className="hidden" checked={privacyAccepted} readOnly />
+                  <span onClick={togglePrivacy} className="text-[10px] font-medium text-slate-400 leading-tight select-none">
+                    I agree to the <button type="button" className="text-blue-500 hover:underline font-bold">4D Nexus Pro Privacy Policy</button> and terms of node synchronization.
+                  </span>
+                </label>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between px-1 pt-2">
               <label className="flex items-center gap-2 cursor-pointer group">
                 <div 
                   onClick={toggleRememberMe}
@@ -380,7 +405,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, lang, o
               <ShadowButton 
                 variant="primary" 
                 className="w-full py-4 flex items-center justify-center gap-3 relative overflow-hidden group"
-                disabled={loading}
+                disabled={loading || (stage === 1 && !privacyAccepted)}
               >
                 {loading ? (
                   <>

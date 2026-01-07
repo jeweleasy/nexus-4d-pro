@@ -31,14 +31,18 @@ import {
   MapPin,
   Phone,
   User,
-  // Added Loader2 to fix the reference error on line 225
   Loader2
 } from 'lucide-react';
 import { ShadowButton } from './ShadowButton';
-import { Seller } from '../types';
+import { Seller, EliteRequest } from '../types';
 import { MOCK_SELLERS } from '../constants';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  eliteRequests: EliteRequest[];
+  onApproveElite: (id: string) => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ eliteRequests, onApproveElite }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminCreds, setAdminCreds] = useState({ user: '', pass: '' });
   const [activeTab, setActiveTab] = useState<'terminals' | 'approvals' | 'system'>('terminals');
@@ -55,13 +59,6 @@ export const AdminDashboard: React.FC = () => {
     contactNumber: ''
   });
 
-  // Mock Elite Requests
-  const [eliteRequests, setEliteRequests] = useState([
-    { id: 'req-01', nexusId: 'CryptoKing_99', email: 'crypto@web3.io', date: '2024-10-24', status: 'pending' },
-    { id: 'req-02', nexusId: 'DataDrifter', email: 'drifter@nexus.com', date: '2024-10-23', status: 'pending' },
-    { id: 'req-03', nexusId: 'TotoTitan', email: 'titan@gmail.com', date: '2024-10-24', status: 'pending' },
-  ]);
-
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -76,11 +73,6 @@ export const AdminDashboard: React.FC = () => {
       }
       setLoading(false);
     }, 1200);
-  };
-
-  const handleApproveElite = (id: string) => {
-    setEliteRequests(prev => prev.filter(req => req.id !== id));
-    alert("Node Escalation Successful: User promoted to Nexus Elite.");
   };
 
   const handleSellerKeyIn = (e: React.FormEvent) => {
@@ -289,21 +281,18 @@ export const AdminDashboard: React.FC = () => {
                  {eliteRequests.length > 0 ? eliteRequests.map((req) => (
                     <div key={req.id} className="p-6 rounded-[2rem] bg-white/5 border border-white/5 flex items-center justify-between hover:bg-white/10 transition-all group">
                        <div className="flex items-center gap-6">
-                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${req.nexusId}`} className="w-14 h-14 rounded-2xl border border-white/10 bg-black" alt="Node" />
+                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${req.nexusId}`} className="w-14 h-14 rounded-2xl border border-white/10 bg-black shadow-lg" alt="Node" />
                           <div className="space-y-1">
                              <p className="text-lg font-orbitron font-bold text-white group-hover:text-amber-400 transition-colors">{req.nexusId}</p>
                              <div className="flex items-center gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                                 <span>{req.email}</span>
                                 <span className="text-slate-800">|</span>
-                                <span>Requested: {req.date}</span>
+                                <span>Requested: {new Date(req.timestamp).toLocaleDateString()}</span>
                              </div>
                           </div>
                        </div>
                        <div className="flex gap-3">
-                          <button onClick={() => setEliteRequests(prev => prev.filter(r => r.id !== req.id))} className="w-12 h-12 rounded-2xl bg-red-600/10 text-red-500 flex items-center justify-center border border-red-500/20 hover:bg-red-600/20 transition-all">
-                             <XCircle size={20} />
-                          </button>
-                          <ShadowButton variant="gold" onClick={() => handleApproveElite(req.id)} className="px-6 py-3 text-[10px] font-black uppercase flex items-center gap-2">
+                          <ShadowButton variant="gold" onClick={() => onApproveElite(req.id)} className="px-6 py-3 text-[10px] font-black uppercase flex items-center gap-2">
                              <UserCheck size={16} /> Approve Access
                           </ShadowButton>
                        </div>
