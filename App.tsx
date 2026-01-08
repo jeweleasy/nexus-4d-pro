@@ -55,7 +55,8 @@ import {
   Monitor,
   Sparkles,
   MapPin,
-  Loader2
+  Loader2,
+  ArrowUp
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -101,9 +102,6 @@ import {
 type View = 'dashboard' | 'stats' | 'archive' | 'predictions' | 'news' | 'favorites' | 'premium' | 'manual' | 'admin' | 'disclaimer' | 'privacy' | 'about' | 'contact' | 'sitemap' | 'terms' | 'community' | 'widgets' | 'challenges' | 'sellers';
 type LangCode = 'EN' | 'CN' | 'MY';
 
-const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
 export interface FrequencyNode {
   digit: number;
   pos: number;
@@ -133,14 +131,11 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState<LotteryResult | null>(null);
   const [sharingResult, setSharingResult] = useState<LotteryResult | null>(null);
-  const [verifyingResultId, setVerifyingResultId] = useState<string | null>(null);
-  const [showAr, setShowAr] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'premium' | 'error' } | null>(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showMobileTools, setShowMobileTools] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   
   const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>(() => {
     try {
@@ -195,6 +190,17 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const handleScroll = () => {
+      if (mainRef.current) {
+        setShowScrollTop(mainRef.current.scrollTop > 400);
+      }
+    };
+    const mainEl = mainRef.current;
+    mainEl?.addEventListener('scroll', handleScroll);
+    return () => mainEl?.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
@@ -209,20 +215,13 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('nexus_user', JSON.stringify(currentUser));
-      localStorage.setItem('nexus_last_active', Date.now().toString());
       setIsPremium(currentUser.isPremium);
-      // Automatically grant admin if specific ID is used for demo
       if (currentUser.nexusId === 'admin_jewel') setIsAdmin(true);
     } else {
       localStorage.removeItem('nexus_user');
-      localStorage.removeItem('nexus_last_active');
       setIsAdmin(false);
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('nexus_elite_requests', JSON.stringify(pendingEliteRequests));
-  }, [pendingEliteRequests]);
 
   useEffect(() => {
     if (toast) {
@@ -235,12 +234,6 @@ const App: React.FC = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setShowProfileMenu(false);
-    setToast({ message: "Node Deactivated.", type: 'info' });
-  };
 
   const handleSelectProvider = (provider: LotteryProvider) => {
     const latestForProvider = MOCK_RESULTS
@@ -298,14 +291,14 @@ const App: React.FC = () => {
   const NavItem = ({ icon: Icon, label, id, badge }: { icon: any, label: string, id: View, badge?: string }) => (
     <button
       onClick={() => { setActiveView(id); setSidebarOpen(false); if(mainRef.current) mainRef.current.scrollTop = 0; }}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left group ${
+      className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl transition-all w-full text-left group active:scale-[0.98] md:active:scale-100 ${
         activeView === id 
           ? 'bg-blue-600/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 shadow-sm' 
           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
       }`}
     >
       <Icon size={18} className={activeView === id ? 'text-blue-500' : 'group-hover:scale-110 transition-transform'} />
-      <span className="font-medium text-sm flex-1">{label}</span>
+      <span className="font-semibold text-sm flex-1">{label}</span>
       {badge && <span className="text-[8px] font-black bg-blue-500 text-white px-1.5 py-0.5 rounded-full">{badge}</span>}
       {activeView === id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>}
     </button>
@@ -327,31 +320,24 @@ const App: React.FC = () => {
       {celebrationMatch && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setCelebrationMatch(null)}></div>
-          <div className="relative glass rounded-[3rem] border-2 border-amber-500/40 p-12 text-center space-y-8 shadow-[0_0_100px_rgba(245,158,11,0.2)] animate-in zoom-in slide-in-from-bottom-12 duration-700 max-w-lg">
-             <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[3rem]">
-                <div className="absolute -top-20 -left-20 w-64 h-64 bg-amber-500/20 blur-[80px] animate-pulse"></div>
-                <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-500/20 blur-[80px] animate-pulse"></div>
-             </div>
-             
+          <div className="relative glass rounded-[3rem] border-2 border-amber-500/40 p-8 sm:p-12 text-center space-y-8 shadow-[0_0_100px_rgba(245,158,11,0.2)] animate-in zoom-in slide-in-from-bottom-12 duration-700 max-w-lg">
              <div className="relative z-10 space-y-4">
-                <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)] animate-bounce">
-                   <Trophy size={48} className="text-amber-500" />
+                <div className="w-20 sm:w-24 h-20 sm:h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)] animate-bounce">
+                   <Trophy size={40} className="text-amber-500 sm:size-48" />
                 </div>
-                <h2 className="text-6xl font-orbitron font-black text-white glow-gold tracking-tighter">CONGRATS!</h2>
-                <p className="text-xl font-orbitron font-bold text-amber-500 uppercase tracking-[0.3em]">Signature Match Detected</p>
+                <h2 className="text-4xl sm:text-6xl font-orbitron font-black text-white glow-gold tracking-tighter">CONGRATS!</h2>
+                <p className="text-sm sm:text-xl font-orbitron font-bold text-amber-500 uppercase tracking-[0.3em]">Signature Match Detected</p>
              </div>
-
-             <div className="relative z-10 bg-white/5 border border-white/10 rounded-[2rem] p-8 space-y-4">
+             <div className="relative z-10 bg-white/5 border border-white/10 rounded-[2rem] p-6 sm:p-8 space-y-4">
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Matched Sequence</p>
-                <div className="text-8xl font-orbitron font-black text-white tracking-[0.1em]">{celebrationMatch.num}</div>
+                <div className="text-6xl sm:text-8xl font-orbitron font-black text-white tracking-[0.1em]">{celebrationMatch.num}</div>
                 <div className="flex flex-col gap-1">
                    <p className="text-lg font-orbitron font-bold text-blue-400">{celebrationMatch.result.provider}</p>
-                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{celebrationMatch.result.drawDate} &bull; Draw #{celebrationMatch.result.drawNumber}</p>
+                   <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">{celebrationMatch.result.drawDate} &bull; Draw #{celebrationMatch.result.drawNumber}</p>
                 </div>
              </div>
-
              <div className="relative z-10 flex gap-4">
-                <ShadowButton onClick={() => setCelebrationMatch(null)} variant="gold" className="flex-1 py-5 text-sm font-black uppercase">
+                <ShadowButton onClick={() => setCelebrationMatch(null)} variant="gold" className="flex-1 py-4 sm:py-5 text-sm font-black uppercase">
                   Collect Victory Data
                 </ShadowButton>
              </div>
@@ -359,10 +345,14 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <aside className={`fixed inset-0 z-[160] md:static w-72 h-screen border-r border-slate-200 dark:border-white/5 p-6 flex flex-col gap-6 transition-transform duration-300 md:translate-x-0 bg-slate-50 dark:bg-[#050505] ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[155] md:hidden animate-in fade-in duration-300" onClick={() => setSidebarOpen(false)}></div>
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-[160] md:static w-72 h-full border-r border-slate-200 dark:border-white/5 p-6 flex flex-col gap-6 transition-transform duration-300 md:translate-x-0 bg-slate-50 dark:bg-[#050505] shadow-2xl md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between">
            <NexusLogo size="md" onClick={() => setActiveView('dashboard')} className="cursor-pointer" />
-           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-slate-500"><X size={20}/></button>
+           <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-slate-500 active:bg-slate-200 dark:active:bg-white/10 rounded-lg"><X size={24}/></button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
           <NavItem icon={LayoutDashboard} label={t.nav.dashboard} id="dashboard" />
@@ -382,11 +372,11 @@ const App: React.FC = () => {
         <LoyaltySystem currentUser={currentUser} onUpdateUser={setCurrentUser} />
       </aside>
 
-      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white pb-24">
+      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white pb-24 md:pb-0">
         <header className="flex h-20 items-center justify-between px-4 md:px-8 border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
           <div className="flex items-center gap-2 md:gap-6">
-            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-slate-500 hover:text-blue-500 transition-colors">
-              <Menu size={24} />
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-3 text-slate-500 hover:text-blue-500 transition-colors active:scale-95">
+              <Menu size={26} />
             </button>
             <div className="hidden lg:flex items-center gap-3 glass px-4 py-2 rounded-xl border border-white/5">
               <Clock size={16} className="text-blue-500" />
@@ -405,9 +395,9 @@ const App: React.FC = () => {
                 </span>
             </div>
             
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <div className="relative">
-                <button onClick={() => setShowLangMenu(!showLangMenu)} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-blue-500 transition-all flex items-center gap-2">
+                <button onClick={() => setShowLangMenu(!showLangMenu)} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-blue-500 transition-all flex items-center gap-2 active:scale-95">
                   <Languages size={18} />
                   <span className="hidden xl:block text-[10px] font-black">{lang}</span>
                 </button>
@@ -423,17 +413,17 @@ const App: React.FC = () => {
 
             {currentUser ? (
               <div className="relative">
-                <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-3 glass p-1.5 rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all">
+                <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 sm:gap-3 glass p-1.5 rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all active:scale-95">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${currentUser.avatarId}`} className="w-8 h-8 rounded-xl border border-white/10" alt="Avatar" />
-                  <div className="hidden md:block pr-2 text-left">
+                  <div className="hidden sm:block pr-2 text-left">
                     <p className="text-[10px] font-black leading-tight">{currentUser.nexusId}</p>
                     <p className="text-[8px] font-bold text-slate-500">{currentUser.points} PTS</p>
                   </div>
                 </button>
               </div>
             ) : (
-              <button onClick={() => setShowLogin(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95">
-                <Fingerprint size={16} /> {t.common.activation}
+              <button onClick={() => setShowLogin(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95">
+                <Fingerprint size={16} /> <span className="hidden xs:inline">{t.common.activation}</span>
               </button>
             )}
           </div>
@@ -443,13 +433,13 @@ const App: React.FC = () => {
           {activeView === 'dashboard' && (
             <>
               <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-orbitron font-bold flex items-center gap-3">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-lg sm:text-xl font-orbitron font-bold flex items-center gap-3">
                     <div className="nexus-line nexus-line-amber"></div> {t.common.jackpotPulse}
                   </h2>
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                    <span className="text-[9px] font-black uppercase text-slate-500">{t.common.syncActive}</span>
+                    <span className="text-[9px] font-black uppercase text-slate-500 hidden sm:inline">{t.common.syncActive}</span>
                   </div>
                 </div>
                 <JackpotTracker />
@@ -465,11 +455,11 @@ const App: React.FC = () => {
                         <p className="text-[9px] text-slate-500 font-bold">{displayResults.date}</p>
                       </div>
                     </div>
-                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-[10px] font-black uppercase font-orbitron outline-none" />
+                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-[10px] font-black uppercase font-orbitron outline-none w-full sm:w-auto" />
                   </div>
                   <div className="grid grid-cols-1 gap-6">
                     {displayResults.results.map((res, i) => (
-                      <div key={i} onClick={() => setSelectedResult(res)} className="cursor-pointer">
+                      <div key={i} onClick={() => setSelectedResult(res)} className="cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.99]">
                         <ResultCard 
                           result={res} lang={lang} isLoggedIn={!!currentUser} 
                           onGuestAttempt={handleGuestAttempt} 
@@ -490,12 +480,26 @@ const App: React.FC = () => {
             </>
           )}
 
+          {activeView === 'predictions' && (
+            <div className="space-y-8 max-w-4xl mx-auto">
+               <div className="flex items-center gap-4">
+                  <Cpu className="text-amber-500" size={32} />
+                  <h2 className="text-3xl font-orbitron font-bold">Neural Core Activation</h2>
+               </div>
+               <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
+                  <LuckyNumber lang={lang} heatmapData={heatmapData} />
+               </div>
+            </div>
+          )}
+
           {activeView === 'stats' && (
             <div className="space-y-8">
-               <h2 className="text-3xl font-orbitron font-bold">Deep Analytics Matrix</h2>
+               <h2 className="text-2xl sm:text-3xl font-orbitron font-bold">Deep Analytics Matrix</h2>
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="glass p-8 rounded-[2rem] border border-white/5">
-                     <h3 className="text-xl font-bold mb-6">Hot Spot Frequency</h3>
+                  <div className="glass p-6 sm:p-8 rounded-[2rem] border border-white/5">
+                     <h3 className="text-lg sm:text-xl font-bold mb-6">Hot Spot Frequency</h3>
                      <StatsChart />
                   </div>
                   <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
@@ -507,7 +511,7 @@ const App: React.FC = () => {
           {activeView === 'news' && <NewsSection isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
           {activeView === 'favorites' && (
             <div className="space-y-8">
-              <h2 className="text-3xl font-orbitron font-bold">My Personal Library</h2>
+              <h2 className="text-2xl sm:text-3xl font-orbitron font-bold">My Personal Library</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {favorites.length > 0 ? favorites.map((res, i) => (
                    <ResultCard 
@@ -526,18 +530,13 @@ const App: React.FC = () => {
           )}
           
           {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
-          
           {activeView === 'challenges' && <RankingSystem />}
-
           {activeView === 'sellers' && <SellerArchive isAdmin={isAdmin} onNavigateToContact={() => setActiveView('contact')} />}
-          
           {activeView === 'premium' && <PremiumView isPremium={isPremium} currentUser={currentUser} pendingRequests={pendingEliteRequests} onRequestUpgrade={() => setToast({message: "Upgrade Request Synchronized", type: 'info'})} />}
-          
           {activeView === 'admin' && <AdminDashboard eliteRequests={pendingEliteRequests} onApproveElite={(id) => {
             setPendingEliteRequests(prev => prev.filter(r => r.id !== id));
             setToast({ message: "Node Promoted to Elite", type: 'premium' });
           }} />}
-
           {activeView === 'manual' && <UserManual />}
           {activeView === 'disclaimer' && <DisclaimerPage />}
           {activeView === 'privacy' && <PrivacyPolicy />}
@@ -548,6 +547,15 @@ const App: React.FC = () => {
           {activeView === 'widgets' && <WidgetGenerator />}
         </div>
       </main>
+
+      {showScrollTop && (
+        <button 
+          onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-24 w-12 h-12 glass border border-white/10 rounded-full flex items-center justify-center text-blue-500 shadow-2xl animate-in fade-in slide-in-from-bottom-4 transition-all hover:bg-blue-600 hover:text-white z-[140]"
+        >
+          <ArrowUp size={20} />
+        </button>
+      )}
 
       {selectedResult && (
         <ProviderResultsModal 
@@ -563,12 +571,10 @@ const App: React.FC = () => {
       )}
 
       {sharingResult && <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />}
-
       <LoginModal 
         isOpen={showLogin} onClose={() => setShowLogin(false)} lang={lang} 
         onLogin={(u) => { setCurrentUser(u); setShowLogin(false); }} onCreateId={() => {}} 
       />
-      
       <AIChatAssistant />
     </div>
   );
