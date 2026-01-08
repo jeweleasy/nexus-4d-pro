@@ -56,7 +56,9 @@ import {
   Sparkles,
   MapPin,
   Loader2,
-  ArrowUp
+  ArrowUp,
+  Youtube,
+  Github
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -235,6 +237,12 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const navigateTo = (view: View) => {
+    setActiveView(view);
+    if(mainRef.current) mainRef.current.scrollTop = 0;
+    setSidebarOpen(false);
+  };
+
   const handleSelectProvider = (provider: LotteryProvider) => {
     const latestForProvider = MOCK_RESULTS
       .filter(r => r.provider === provider)
@@ -290,7 +298,7 @@ const App: React.FC = () => {
 
   const NavItem = ({ icon: Icon, label, id, badge }: { icon: any, label: string, id: View, badge?: string }) => (
     <button
-      onClick={() => { setActiveView(id); setSidebarOpen(false); if(mainRef.current) mainRef.current.scrollTop = 0; }}
+      onClick={() => navigateTo(id)}
       className={`flex items-center gap-3 px-4 py-3 sm:py-3.5 rounded-xl transition-all w-full text-left group active:scale-[0.98] md:active:scale-100 ${
         activeView === id 
           ? 'bg-blue-600/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 shadow-sm' 
@@ -302,6 +310,83 @@ const App: React.FC = () => {
       {badge && <span className="text-[8px] font-black bg-blue-500 text-white px-1.5 py-0.5 rounded-full">{badge}</span>}
       {activeView === id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>}
     </button>
+  );
+
+  const Footer = () => (
+    <footer className="mt-20 py-20 px-4 md:px-8 border-t border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-black/30">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          <div className="space-y-6">
+            <NexusLogo size="md" onClick={() => navigateTo('dashboard')} className="cursor-pointer" />
+            <p className="text-sm text-slate-500 leading-relaxed font-medium">
+              Revolutionizing lottery intelligence through neural pattern discovery and real-time data flow synchronization.
+            </p>
+            <div className="flex items-center gap-4">
+               {[Facebook, Twitter, Youtube, Instagram].map((Icon, i) => (
+                 <button key={i} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-blue-500 transition-all">
+                    <Icon size={18} />
+                 </button>
+               ))}
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="font-orbitron font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white mb-6">Core Engine</h4>
+            <ul className="space-y-3">
+               {[
+                 { id: 'dashboard', label: 'Real-Time Matrix' },
+                 { id: 'stats', label: 'Deep Analytics' },
+                 { id: 'archive', label: 'Historical Ledger' },
+                 { id: 'predictions', label: 'Neural Core' }
+               ].map(l => (
+                 <li key={l.id}><button onClick={() => navigateTo(l.id as View)} className="text-sm text-slate-500 hover:text-blue-500 font-bold transition-colors">{l.label}</button></li>
+               ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-orbitron font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white mb-6">Compliance</h4>
+            <ul className="space-y-3">
+               {[
+                 { id: 'disclaimer', label: 'Legal Disclaimer' },
+                 { id: 'privacy', label: 'Privacy Standards' },
+                 { id: 'terms', label: 'Terms of Sync' },
+                 { id: 'sitemap', label: 'Neural Sitemap' }
+               ].map(l => (
+                 <li key={l.id}><button onClick={() => navigateTo(l.id as View)} className="text-sm text-slate-500 hover:text-blue-500 font-bold transition-colors">{l.label}</button></li>
+               ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-orbitron font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white mb-6">Support Portal</h4>
+            <ul className="space-y-3">
+               {[
+                 { id: 'about', label: 'The Mission' },
+                 { id: 'manual', label: 'Node Operations' },
+                 { id: 'contact', label: 'Command Support' },
+                 { id: 'news', label: 'Industry Press' }
+               ].map(l => (
+                 <li key={l.id}><button onClick={() => navigateTo(l.id as View)} className="text-sm text-slate-500 hover:text-blue-500 font-bold transition-colors">{l.label}</button></li>
+               ))}
+            </ul>
+          </div>
+        </div>
+        
+        <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+           <div className="flex items-center gap-4">
+              <div className="p-1.5 rounded-lg bg-green-500/10 text-green-500 border border-green-500/20">
+                 <ShieldCheck size={14} />
+              </div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">&copy; 2024 4D NEXUS PRO &bull; INTELLIGENCE PLATFORM v4.2</p>
+           </div>
+           <div className="flex items-center gap-6">
+              <span className="text-[8px] font-black text-slate-700 uppercase tracking-[0.3em]">Optimized for AdSense Integration</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
+           </div>
+        </div>
+      </div>
+    </footer>
   );
 
   return (
@@ -351,7 +436,7 @@ const App: React.FC = () => {
 
       <aside className={`fixed inset-y-0 left-0 z-[160] md:static w-72 h-full border-r border-slate-200 dark:border-white/5 p-6 flex flex-col gap-6 transition-transform duration-300 md:translate-x-0 bg-slate-50 dark:bg-[#050505] shadow-2xl md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between">
-           <NexusLogo size="md" onClick={() => setActiveView('dashboard')} className="cursor-pointer" />
+           <NexusLogo size="md" onClick={() => navigateTo('dashboard')} className="cursor-pointer" />
            <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 text-slate-500 active:bg-slate-200 dark:active:bg-white/10 rounded-lg"><X size={24}/></button>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -372,7 +457,7 @@ const App: React.FC = () => {
         <LoyaltySystem currentUser={currentUser} onUpdateUser={setCurrentUser} />
       </aside>
 
-      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white pb-24 md:pb-0">
+      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white pb-0">
         <header className="flex h-20 items-center justify-between px-4 md:px-8 border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
           <div className="flex items-center gap-2 md:gap-6">
             <button onClick={() => setSidebarOpen(true)} className="md:hidden p-3 text-slate-500 hover:text-blue-500 transition-colors active:scale-95">
@@ -542,10 +627,13 @@ const App: React.FC = () => {
           {activeView === 'privacy' && <PrivacyPolicy />}
           {activeView === 'about' && <AboutUs />}
           {activeView === 'contact' && <ContactUs />}
-          {activeView === 'sitemap' && <Sitemap onNavigate={setActiveView} />}
+          {activeView === 'sitemap' && <Sitemap onNavigate={navigateTo} />}
           {activeView === 'terms' && <TermsConditions />}
           {activeView === 'widgets' && <WidgetGenerator />}
         </div>
+        
+        {/* AdSense Ready Global Footer */}
+        <Footer />
       </main>
 
       {showScrollTop && (
