@@ -54,7 +54,8 @@ import {
   Skull,
   Monitor,
   Sparkles,
-  MapPin
+  MapPin,
+  Loader2
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -87,7 +88,6 @@ import { LoginModal } from './components/LoginModal';
 import { HistoryArchive } from './components/HistoryArchive';
 import { PersonalWatchlist } from './components/PersonalWatchlist';
 import { SellerArchive } from './components/SellerArchive';
-// Added EliteRequest to imports
 import { LotteryProvider, LotteryResult, User, EliteRequest } from './types';
 import { 
   DisclaimerPage, 
@@ -111,19 +111,17 @@ export interface FrequencyNode {
   lastSeen: string;
 }
 
-// Removed EliteRequest interface definition as it is now imported from types.ts
-
 const App: React.FC = () => {
+  const [isHandshaking, setIsHandshaking] = useState(true);
+  
   const detectLanguage = (): LangCode => {
     try {
       const saved = localStorage.getItem('nexus_pro_lang') as LangCode;
-      if (saved && (saved === 'EN' || saved === 'CN' || saved === 'MY')) return saved;
+      if (saved && ['EN', 'CN', 'MY'].includes(saved)) return saved;
       const browserLang = (navigator.language || 'en').toLowerCase();
       if (browserLang.includes('zh')) return 'CN';
       if (browserLang.includes('ms') || browserLang.includes('my')) return 'MY';
-    } catch (e) {
-      console.warn("Storage or Navigator access limited.");
-    }
+    } catch (e) {}
     return 'EN';
   };
 
@@ -144,19 +142,14 @@ const App: React.FC = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileTools, setShowMobileTools] = useState(false);
   
-  // Elite Escalation State
   const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>(() => {
     try {
       const saved = localStorage.getItem('nexus_elite_requests');
       return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   });
 
-  // Match Celebration State
   const [celebrationMatch, setCelebrationMatch] = useState<{ result: LotteryResult; num: string } | null>(null);
-  
   const mainRef = useRef<HTMLDivElement>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -165,10 +158,7 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('nexus_user');
       return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      console.error("User restoration failed.");
-      return null;
-    }
+    } catch (e) { return null; }
   });
   
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -178,14 +168,7 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('nexus_pro_favorites');
       return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [inactivityState, setInactivityState] = useState<{ showWarning: boolean; countdown: string }>({
-    showWarning: false,
-    countdown: ''
+    } catch (e) { return []; }
   });
 
   const [heatmapData, setHeatmapData] = useState<FrequencyNode[]>(() => {
@@ -194,9 +177,7 @@ const App: React.FC = () => {
       for (let digit = 0; digit <= 9; digit++) {
         const baseFreq = 40 + (Math.sin(pos * digit) * 30) + (Math.random() * 20);
         nodes.push({
-          digit,
-          pos,
-          freq: Math.floor(Math.min(99, Math.max(5, baseFreq))),
+          digit, pos, freq: Math.floor(Math.min(99, Math.max(5, baseFreq))),
           lastSeen: `${Math.floor(Math.random() * 24)}h ago`
         });
       }
@@ -207,83 +188,35 @@ const App: React.FC = () => {
   const t = LANGUAGES[lang] || LANGUAGES.EN;
 
   useEffect(() => {
-    const checkInactivity = () => {
-      try {
-        const lastActive = localStorage.getItem('nexus_last_active');
-        if (!lastActive || !currentUser) return;
-
-        const diff = Date.now() - parseInt(lastActive);
-        
-        if (diff >= SEVEN_DAYS_MS) {
-          localStorage.clear();
-          setCurrentUser(null);
-          setFavorites([]);
-          setInactivityState({ showWarning: false, countdown: '' });
-          setToast({ message: "Inactivity purge complete. Data neutralized.", type: 'error' });
-        } else if (diff >= SIX_DAYS_MS) {
-          const remaining = SEVEN_DAYS_MS - diff;
-          const hours = Math.floor(remaining / (1000 * 60 * 60));
-          const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-          const secs = Math.floor((remaining % (1000 * 60)) / 1000);
-          setInactivityState({
-            showWarning: true,
-            countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-          });
-        } else {
-          setInactivityState({ showWarning: false, countdown: '' });
-        }
-      } catch (e) {}
-    };
-
-    const timer = setInterval(checkInactivity, 1000);
-    return () => clearInterval(timer);
-  }, [currentUser]);
-
-  useEffect(() => {
-    const trackActivity = () => {
-      if (currentUser) {
-        try {
-          localStorage.setItem('nexus_last_active', Date.now().toString());
-        } catch(e) {}
-      }
-    };
-
-    window.addEventListener('mousedown', trackActivity);
-    window.addEventListener('keydown', trackActivity);
-    return () => {
-      window.removeEventListener('mousedown', trackActivity);
-      window.removeEventListener('keydown', trackActivity);
-    };
-  }, [currentUser]);
+    const timer = setTimeout(() => {
+      setIsHandshaking(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
-    } catch(e) {}
+    localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
   }, [favorites]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('nexus_pro_lang', lang);
-    } catch(e) {}
+    localStorage.setItem('nexus_pro_lang', lang);
   }, [lang]);
 
   useEffect(() => {
     if (currentUser) {
-      try {
-        localStorage.setItem('nexus_user', JSON.stringify(currentUser));
-        localStorage.setItem('nexus_last_active', Date.now().toString());
-      } catch(e) {}
+      localStorage.setItem('nexus_user', JSON.stringify(currentUser));
+      localStorage.setItem('nexus_last_active', Date.now().toString());
       setIsPremium(currentUser.isPremium);
+      // Automatically grant admin if specific ID is used for demo
+      if (currentUser.nexusId === 'admin_jewel') setIsAdmin(true);
     } else {
-      try {
-        localStorage.removeItem('nexus_user');
-        localStorage.removeItem('nexus_last_active');
-      } catch(e) {}
+      localStorage.removeItem('nexus_user');
+      localStorage.removeItem('nexus_last_active');
+      setIsAdmin(false);
     }
   }, [currentUser]);
 
@@ -303,21 +236,10 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (mainRef.current) setShowScrollTop(mainRef.current.scrollTop > 400);
-    };
-    const mainEl = mainRef.current;
-    mainEl?.addEventListener('scroll', handleScroll);
-    return () => mainEl?.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => { mainRef.current?.scrollTo(0, 0); }, [activeView]);
-
   const handleLogout = () => {
     setCurrentUser(null);
     setShowProfileMenu(false);
-    setToast({ message: "Node Deactivated. Safe session ended.", type: 'info' });
+    setToast({ message: "Node Deactivated.", type: 'info' });
   };
 
   const handleSelectProvider = (provider: LotteryProvider) => {
@@ -329,6 +251,11 @@ const App: React.FC = () => {
 
   const handleGuestAttempt = () => {
     setToast({ message: t.common.guestRestriction, type: 'error' });
+  };
+
+  const handleWatchlistMatch = (result: LotteryResult, matchedNum: string) => {
+    setCelebrationMatch({ result, num: matchedNum });
+    setToast({ message: "Victory Signature Detected!", type: 'success' });
   };
 
   const toggleFavorite = (result: LotteryResult) => {
@@ -353,75 +280,24 @@ const App: React.FC = () => {
     return { results: MOCK_RESULTS.filter(r => r.drawDate === latestAvailableDate), isFallback: true, label: t.common.latestResults, date: latestAvailableDate };
   }, [selectedDate, t]);
 
-  const handleVoiceCommand = (intent: string, provider: string | null) => {
-    setToast({ message: `AI Intent: ${intent}`, type: 'info' });
-    if (intent === 'OPEN_COMMUNITY') setActiveView('community');
-    else if (intent === 'VIEW_STATS') setActiveView('stats');
-    else if (intent === 'CHECK_RESULT') {
-        if (provider) {
-          const matched = Object.values(LotteryProvider).find(p => p.toLowerCase().includes(provider.toLowerCase()));
-          if (matched) handleSelectProvider(matched);
-        } else setActiveView('dashboard');
-    }
-  };
-
-  const handleRecalibrateHeatmap = (newData: FrequencyNode[]) => {
-    setHeatmapData(newData);
-    setToast({ message: "Global Heatmap Sync Complete", type: 'success' });
-  };
-
-  const handleWatchlistMatch = (result: LotteryResult, num: string) => {
-    setCelebrationMatch({ result, num });
-  };
-
-  // Elite Activation Functions
-  const handleRequestElite = () => {
-    if (!currentUser) {
-      setShowLogin(true);
-      return;
-    }
-    
-    // Check if already pending
-    if (pendingEliteRequests.some(r => r.userId === currentUser.id)) {
-      setToast({ message: "Neural request already in Command queue.", type: 'info' });
-      return;
-    }
-
-    const request: EliteRequest = {
-      id: `req-${Math.random().toString(36).substr(2, 9)}`,
-      userId: currentUser.id,
-      nexusId: currentUser.nexusId,
-      email: currentUser.email,
-      timestamp: Date.now(),
-      status: 'pending'
-    };
-
-    setPendingEliteRequests(prev => [...prev, request]);
-    setToast({ message: "Activation signal dispatched to Admin Ops.", type: 'success' });
-  };
-
-  const handleApproveElite = (requestId: string) => {
-    const request = pendingEliteRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    // Update Request status
-    setPendingEliteRequests(prev => prev.filter(r => r.id !== requestId));
-
-    // If current logged in user is the one being approved, update their state immediately
-    if (currentUser && currentUser.id === request.userId) {
-      const updatedUser = { ...currentUser, isPremium: true };
-      setCurrentUser(updatedUser);
-      setIsPremium(true);
-      setToast({ message: "Elite Signature Verified. Access Unlocked.", type: 'premium' });
-    } else {
-      // In a real app, this would update a database. For local mock, we'll simulate by updating local storage for that ID if it was "remembered"
-      setToast({ message: `Node ${request.nexusId} upgraded to Elite.`, type: 'success' });
-    }
-  };
+  if (isHandshaking) {
+    return (
+      <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center space-y-6 z-[300]">
+         <div className="relative">
+            <div className="absolute inset-0 bg-blue-500 blur-[80px] opacity-20 animate-pulse"></div>
+            <NexusLogo size="lg" className="relative z-10 animate-pulse" />
+         </div>
+         <div className="flex flex-col items-center space-y-2">
+            <Loader2 className="text-blue-500 animate-spin" size={24} />
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Establishing Handshake Protocol...</p>
+         </div>
+      </div>
+    );
+  }
 
   const NavItem = ({ icon: Icon, label, id, badge }: { icon: any, label: string, id: View, badge?: string }) => (
     <button
-      onClick={() => { setActiveView(id); setSidebarOpen(false); }}
+      onClick={() => { setActiveView(id); setSidebarOpen(false); if(mainRef.current) mainRef.current.scrollTop = 0; }}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left group ${
         activeView === id 
           ? 'bg-blue-600/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 shadow-sm' 
@@ -448,11 +324,10 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Match Celebration Overlay */}
       {celebrationMatch && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setCelebrationMatch(null)}></div>
-          <div className="relative glass-strong rounded-[3rem] border-2 border-amber-500/40 p-12 text-center space-y-8 shadow-[0_0_100px_rgba(245,158,11,0.2)] animate-in zoom-in slide-in-from-bottom-12 duration-700">
+          <div className="relative glass rounded-[3rem] border-2 border-amber-500/40 p-12 text-center space-y-8 shadow-[0_0_100px_rgba(245,158,11,0.2)] animate-in zoom-in slide-in-from-bottom-12 duration-700 max-w-lg">
              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[3rem]">
                 <div className="absolute -top-20 -left-20 w-64 h-64 bg-amber-500/20 blur-[80px] animate-pulse"></div>
                 <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-500/20 blur-[80px] animate-pulse"></div>
@@ -480,75 +355,9 @@ const App: React.FC = () => {
                   Collect Victory Data
                 </ShadowButton>
              </div>
-
-             <div className="absolute -top-4 -left-4">
-                <Sparkles size={40} className="text-amber-500 animate-pulse" />
-             </div>
-             <div className="absolute -bottom-4 -right-4">
-                <Sparkles size={40} className="text-blue-500 animate-pulse" />
-             </div>
           </div>
         </div>
       )}
-
-      {inactivityState.showWarning && (
-        <div className="fixed top-0 left-0 right-0 z-[300] bg-red-600 text-white py-3 px-6 flex items-center justify-between animate-in slide-in-from-top duration-500 shadow-2xl">
-          <div className="flex items-center gap-4">
-             <AlertTriangle size={24} className="animate-pulse" />
-             <div>
-                <p className="text-xs font-black uppercase tracking-widest leading-none">INACTIVITY CRITICAL WARNING</p>
-                <p className="text-[10px] opacity-80 mt-1 uppercase font-bold tracking-tighter">Your node will be purged in {inactivityState.countdown} unless you initiate a sync.</p>
-             </div>
-          </div>
-          <button 
-            onClick={() => {
-              try { localStorage.setItem('nexus_last_active', Date.now().toString()); } catch(e) {}
-            }}
-            className="px-6 py-2 bg-white text-red-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-all active:scale-95"
-          >
-            SYNC NOW
-          </button>
-        </div>
-      )}
-
-      {showScrollTop && (
-        <button 
-          onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-24 right-8 z-[140] w-12 h-12 glass border border-white/10 rounded-2xl flex items-center justify-center text-blue-500 shadow-2xl hover:scale-110 active:scale-95 transition-all animate-in slide-in-from-bottom-4"
-        >
-          <ChevronUp size={24} />
-        </button>
-      )}
-
-      {showAr && <ArExperience onClose={() => setShowAr(false)} />}
-      <AIChatAssistant />
-      {verifyingResultId && <BlockchainVerification resultId={verifyingResultId} onClose={() => setVerifyingResultId(null)} />}
-      <ProviderResultsModal 
-        result={selectedResult} 
-        onClose={() => setSelectedResult(null)} 
-        lang={lang} 
-        isLoggedIn={!!currentUser}
-        onGuestAttempt={handleGuestAttempt}
-        isFavorite={selectedResult ? isResultFavorite(selectedResult) : false} 
-        onToggleFavorite={selectedResult ? () => toggleFavorite(selectedResult) : undefined} 
-        onShare={selectedResult ? (e) => {
-          if (!currentUser) { handleGuestAttempt(); return; }
-          setSharingResult(selectedResult);
-        } : undefined} 
-      />
-      <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />
-      
-      <LoginModal 
-        isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
-        lang={lang}
-        onLogin={(user) => {
-          setCurrentUser(user);
-          const isNew = user.points === 15;
-          setToast({ message: isNew ? `Node Activated: Welcome Bonus +15 Pts` : `Access Granted, Node ${user.nexusId}`, type: 'success' });
-        }}
-        onCreateId={() => {}}
-      />
 
       <aside className={`fixed inset-0 z-[160] md:static w-72 h-screen border-r border-slate-200 dark:border-white/5 p-6 flex flex-col gap-6 transition-transform duration-300 md:translate-x-0 bg-slate-50 dark:bg-[#050505] ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-between">
@@ -570,18 +379,10 @@ const App: React.FC = () => {
           <NavItem icon={CreditCard} label={t.nav.premium} id="premium" />
           <NavItem icon={ShieldCheck} label={t.nav.admin} id="admin" />
         </nav>
-        <div className="space-y-4">
-           {!isPremium && (
-             <button onClick={() => setActiveView('premium')} className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30 text-amber-500 text-xs font-bold flex items-center justify-between group hover:scale-[1.02] transition-all">
-                <div className="flex items-center gap-2"><Zap size={14} className="group-hover:animate-pulse" /> {t.common.upgrade}</div>
-                <ArrowRight size={14} />
-             </button>
-           )}
-           <LoyaltySystem currentUser={currentUser} onUpdateUser={setCurrentUser} />
-        </div>
+        <LoyaltySystem currentUser={currentUser} onUpdateUser={setCurrentUser} />
       </aside>
 
-      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white scroll-smooth pb-24">
+      <main ref={mainRef} className="flex-1 overflow-y-auto relative flex flex-col bg-slate-50 dark:bg-[#050505] text-slate-900 dark:text-white pb-24">
         <header className="flex h-20 items-center justify-between px-4 md:px-8 border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 bg-slate-50/80 dark:bg-[#050505]/80 backdrop-blur-md">
           <div className="flex items-center gap-2 md:gap-6">
             <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 text-slate-500 hover:text-blue-500 transition-colors">
@@ -593,40 +394,12 @@ const App: React.FC = () => {
                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
-            
-            <div className="md:hidden relative">
-               <button onClick={() => setShowMobileTools(!showMobileTools)} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500">
-                  <Sliders size={20} />
-               </button>
-               {showMobileTools && (
-                 <div className="absolute top-full left-0 mt-2 w-56 glass border border-white/10 rounded-2xl p-4 shadow-2xl animate-in zoom-in slide-in-from-top-2 flex flex-col gap-4 z-50">
-                    <VoiceSearch onCommand={handleVoiceCommand} />
-                    <div className="flex items-center justify-between">
-                       <span className="text-[10px] font-black text-slate-500">THEME</span>
-                       <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-xl bg-white/5 border border-white/10 text-blue-500">
-                         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-                       </button>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                       <span className="text-[10px] font-black text-slate-500">LANGUAGE</span>
-                       <div className="flex gap-2">
-                         {(['EN', 'CN', 'MY'] as LangCode[]).map(l => (
-                           <button key={l} onClick={() => { setLang(l); setShowMobileTools(false); }} className={`flex-1 py-1 rounded-lg text-[9px] font-black ${lang === l ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500'}`}>{l}</button>
-                         ))}
-                       </div>
-                    </div>
-                 </div>
-               )}
-            </div>
-
-            <div className="hidden md:block">
-               <VoiceSearch onCommand={handleVoiceCommand} />
-            </div>
+            <VoiceSearch onCommand={(i, p) => setToast({ message: `AI Intent: ${i}`, type: 'info' })} />
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="hidden lg:flex items-center gap-2 mr-2 md:mr-4">
-                <div className={`h-2 w-2 rounded-full ${isPremium ? 'bg-amber-500 shadow-[0_0_8px_amber]' : currentUser ? 'bg-blue-500' : 'bg-slate-500'}`}></div>
+            <div className="hidden xl:flex items-center gap-2 mr-4">
+                <div className={`h-2 w-2 rounded-full ${isPremium ? 'bg-amber-500' : currentUser ? 'bg-blue-500' : 'bg-slate-500'}`}></div>
                 <span className="text-[10px] font-black uppercase text-slate-500">
                   {isPremium ? t.common.elite : currentUser ? t.common.verifiedNode : t.common.guestPunter}
                 </span>
@@ -641,74 +414,25 @@ const App: React.FC = () => {
                 {showLangMenu && (
                   <div className="absolute top-full right-0 mt-2 w-32 glass border border-white/10 rounded-2xl p-2 shadow-2xl animate-in zoom-in z-50">
                     {(['EN', 'CN', 'MY'] as LangCode[]).map(l => (
-                      <button key={l} onClick={() => { setLang(l); setShowLangMenu(false); }} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold ${lang === l ? 'bg-blue-600/10 text-blue-500' : 'text-slate-500 hover:bg-white/5'}`}>{l === 'EN' ? 'English' : l === 'CN' ? '中文' : 'Melayu'}</button>
+                      <button key={l} onClick={() => { setLang(l); setShowLangMenu(false); }} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold ${lang === l ? 'bg-blue-600/10 text-blue-500' : 'text-slate-500 hover:bg-white/5'}`}>{l}</button>
                     ))}
                   </div>
                 )}
               </div>
-              <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-blue-500 transition-all">
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
             </div>
 
             {currentUser ? (
               <div className="relative">
-                <button 
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="flex items-center gap-3 glass p-1 md:p-1.5 rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all"
-                >
+                <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-3 glass p-1.5 rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all">
                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${currentUser.avatarId}`} className="w-8 h-8 rounded-xl border border-white/10" alt="Avatar" />
                   <div className="hidden md:block pr-2 text-left">
                     <p className="text-[10px] font-black leading-tight">{currentUser.nexusId}</p>
-                    <div className="flex items-center gap-1.5">
-                       <Coins size={8} className="text-amber-500" />
-                       <p className="text-[8px] font-bold text-slate-500">{currentUser.points} PTS</p>
-                    </div>
+                    <p className="text-[8px] font-bold text-slate-500">{currentUser.points} PTS</p>
                   </div>
-                  <ChevronDown size={14} className={`text-slate-600 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
                 </button>
-                {showProfileMenu && (
-                  <div className="absolute top-full right-0 mt-3 w-64 glass border border-white/10 rounded-[2rem] p-4 shadow-3xl animate-in zoom-in slide-in-from-top-3 z-50 overflow-hidden">
-                    <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 blur-2xl rounded-full"></div>
-                    <div className="space-y-4 relative z-10">
-                       <div className="flex items-center gap-3 p-2">
-                          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${currentUser.avatarId}`} className="w-12 h-12 rounded-2xl border border-white/10 shadow-lg" alt="Avatar" />
-                          <div>
-                             <p className="text-xs font-black uppercase">{currentUser.nexusId}</p>
-                             <p className="text-[8px] text-slate-500 font-bold">NODE: {currentUser.id.substring(0,12)}</p>
-                          </div>
-                       </div>
-                       <div className="grid grid-cols-2 gap-2">
-                          <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-center">
-                             <p className="text-[8px] font-black text-slate-500 uppercase">Points</p>
-                             <p className="text-sm font-orbitron font-bold text-amber-500">{currentUser.points}</p>
-                          </div>
-                          <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-center">
-                             <p className="text-[8px] font-black text-slate-500 uppercase">Level</p>
-                             <p className="text-sm font-orbitron font-bold text-blue-500">{isPremium ? 'ELITE' : 'CORE'}</p>
-                          </div>
-                       </div>
-                       <div className="space-y-1">
-                          <button onClick={() => { setActiveView('challenges'); setShowProfileMenu(false); }} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-xs text-slate-300 font-bold transition-all group">
-                             <Trophy size={16} className="text-slate-500 group-hover:text-amber-500" /> Rewards & Stats
-                          </button>
-                          <button onClick={() => { setActiveView('premium'); setShowProfileMenu(false); }} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-xs text-slate-300 font-bold transition-all group">
-                             <Sliders size={16} className="text-slate-500 group-hover:text-blue-500" /> Account Config
-                          </button>
-                          <div className="my-2 border-t border-white/5"></div>
-                          <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-500/10 text-xs text-red-500 font-bold transition-all">
-                             <LogOut size={16} /> Deactivate Session
-                          </button>
-                       </div>
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
-              <button 
-                onClick={() => setShowLogin(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95"
-              >
+              <button onClick={() => setShowLogin(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95">
                 <Fingerprint size={16} /> {t.common.activation}
               </button>
             )}
@@ -741,169 +465,111 @@ const App: React.FC = () => {
                         <p className="text-[9px] text-slate-500 font-bold">{displayResults.date}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-[10px] font-black uppercase font-orbitron outline-none flex-1" />
-                    </div>
+                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-[10px] font-black uppercase font-orbitron outline-none" />
                   </div>
                   <div className="grid grid-cols-1 gap-6">
-                    {displayResults.results.slice(0, 2).map((res, i) => (
-                      <div key={i} className="relative group">
-                        <div onClick={() => setSelectedResult(res)} className="cursor-pointer">
-                          <ResultCard 
-                            result={res} 
-                            lang={lang} 
-                            isLoggedIn={!!currentUser}
-                            onGuestAttempt={handleGuestAttempt}
-                            isFavorite={isResultFavorite(res)} 
-                            onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }} 
-                            onShare={(e) => { 
-                              e.stopPropagation(); 
-                              if (!currentUser) { handleGuestAttempt(); return; }
-                              setSharingResult(res); 
-                            }} 
-                          />
-                        </div>
-                        <button onClick={() => setVerifyingResultId(res.drawNumber)} className="absolute bottom-6 right-6 p-2 glass rounded-lg border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-600/20 text-blue-500 z-10">
-                          <ShieldCheck size={14} />
-                        </button>
-                      </div>
-                    ))}
-                    
-                    {!isPremium && <AdSensePlaceholder variant="IN_FEED" slot="DASHBOARD_FEED_AD" />}
-
-                    {displayResults.results.slice(2).map((res, i) => (
-                      <div key={i+2} className="relative group">
-                        <div onClick={() => setSelectedResult(res)} className="cursor-pointer">
-                          <ResultCard 
-                            result={res} 
-                            lang={lang} 
-                            isLoggedIn={!!currentUser}
-                            onGuestAttempt={handleGuestAttempt}
-                            isFavorite={isResultFavorite(res)} 
-                            onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }} 
-                            onShare={(e) => { 
-                              e.stopPropagation(); 
-                              if (!currentUser) { handleGuestAttempt(); return; }
-                              setSharingResult(res); 
-                            }} 
-                          />
-                        </div>
-                        <button onClick={() => setVerifyingResultId(res.drawNumber)} className="absolute bottom-6 right-6 p-2 glass rounded-lg border border-slate-200 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-600/20 text-blue-500 z-10">
-                          <ShieldCheck size={14} />
-                        </button>
+                    {displayResults.results.map((res, i) => (
+                      <div key={i} onClick={() => setSelectedResult(res)} className="cursor-pointer">
+                        <ResultCard 
+                          result={res} lang={lang} isLoggedIn={!!currentUser} 
+                          onGuestAttempt={handleGuestAttempt} 
+                          isFavorite={isResultFavorite(res)}
+                          onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }}
+                        />
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-8">
-                  {/* Conditional rendering for logged in personal nodes as requested */}
-                  {currentUser && (
-                    <PersonalWatchlist 
-                      isLoggedIn={true} 
-                      onGuestAttempt={handleGuestAttempt} 
-                      onMatch={handleWatchlistMatch} 
-                    />
-                  )}
+                  {currentUser && <PersonalWatchlist isLoggedIn={true} onGuestAttempt={handleGuestAttempt} onMatch={handleWatchlistMatch} />}
                   <LuckyNumber lang={lang} heatmapData={heatmapData} />
                   <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
-                  <DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} />
-                  {!isPremium && <AdSensePlaceholder slot="SIDEBAR_NATIVE" variant="SIDEBAR" />}
-                  <GamingTools />
+                  <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
                 </div>
               </div>
             </>
           )}
 
-          {activeView === 'premium' && (
-            <PremiumView 
-              isPremium={isPremium} 
-              currentUser={currentUser}
-              pendingRequests={pendingEliteRequests}
-              onRequestUpgrade={handleRequestElite}
-            />
-          )}
-          
-          {/* Fixed undefined activeTab by using activeView */}
-          {activeView === 'admin' && (isAdmin ? (
-            <AdminDashboard 
-              eliteRequests={pendingEliteRequests}
-              onApproveElite={handleApproveElite}
-            />
-          ) : (
-            <div className="max-w-md mx-auto py-20 text-center space-y-8">
-              <div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center mx-auto border border-red-500/20">
-                <Lock size={40} className="text-red-500" />
-              </div>
-              <h2 className="text-3xl font-orbitron font-bold">Admin Restricted</h2>
-              <ShadowButton onClick={() => setIsAdmin(true)} variant="secondary" className="w-full py-4">Simulate Admin Login</ShadowButton>
+          {activeView === 'stats' && (
+            <div className="space-y-8">
+               <h2 className="text-3xl font-orbitron font-bold">Deep Analytics Matrix</h2>
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="glass p-8 rounded-[2rem] border border-white/5">
+                     <h3 className="text-xl font-bold mb-6">Hot Spot Frequency</h3>
+                     <StatsChart />
+                  </div>
+                  <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
+               </div>
             </div>
-          ))}
-          {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
-          {activeView === 'challenges' && <RankingSystem />}
-          {activeView === 'predictions' && <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"><Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} /><div className="space-y-8"><LuckyNumber lang={lang} heatmapData={heatmapData} /><DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div></div>}
-          {activeView === 'stats' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold">{t.nav.stats}</h2><StatsChart />{!isPremium && <AdSensePlaceholder variant="BANNER" slot="STATS_TOP_BANNER" />}<DigitHeatmap lang={lang} data={heatmapData} onSync={handleRecalibrateHeatmap} /></div>}
+          )}
+
           {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} onMatch={handleWatchlistMatch} />}
           {activeView === 'news' && <NewsSection isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'favorites' && (
+            <div className="space-y-8">
+              <h2 className="text-3xl font-orbitron font-bold">My Personal Library</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {favorites.length > 0 ? favorites.map((res, i) => (
+                   <ResultCard 
+                    key={i} result={res} lang={lang} isLoggedIn={!!currentUser} 
+                    onGuestAttempt={handleGuestAttempt} isFavorite={true}
+                    onToggleFavorite={() => toggleFavorite(res)}
+                   />
+                )) : (
+                  <div className="col-span-full py-40 text-center glass rounded-[3rem] border border-dashed border-white/10">
+                     <Heart size={64} className="mx-auto text-slate-800 mb-4" />
+                     <p className="text-slate-500 font-bold uppercase tracking-widest">Library Empty</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
+          
+          {activeView === 'challenges' && <RankingSystem />}
+
           {activeView === 'sellers' && <SellerArchive isAdmin={isAdmin} onNavigateToContact={() => setActiveView('contact')} />}
-          {activeView === 'favorites' && <div className="space-y-8"><h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" fill="currentColor"/> {t.nav.favorites}</h2><div className="grid grid-cols-1 md:grid-cols-2 gap-6">{favorites.map((r,i)=>(<ResultCard key={i} result={r} lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} isFavorite={true} onToggleFavorite={()=>toggleFavorite(r)} onShare={(e)=>{
-            e.stopPropagation();
-            if (!currentUser) { handleGuestAttempt(); return; }
-            setSharingResult(r);
-          }}/>))}</div></div>}
-          {['disclaimer', 'privacy', 'about', 'contact', 'sitemap', 'terms'].includes(activeView) && (<div className="glass p-8 rounded-3xl border border-white/5">{activeView === 'disclaimer' && <DisclaimerPage />}{activeView === 'privacy' && <PrivacyPolicy />}{activeView === 'about' && <AboutUs />}{activeView === 'contact' && <ContactUs />}{activeView === 'sitemap' && <Sitemap onNavigate={setActiveView} />}{activeView === 'terms' && <TermsConditions />}</div>)}
-          {activeView === 'widgets' && <div className="max-w-3xl mx-auto"><WidgetGenerator /></div>}
+          
+          {activeView === 'premium' && <PremiumView isPremium={isPremium} currentUser={currentUser} pendingRequests={pendingEliteRequests} onRequestUpgrade={() => setToast({message: "Upgrade Request Synchronized", type: 'info'})} />}
+          
+          {activeView === 'admin' && <AdminDashboard eliteRequests={pendingEliteRequests} onApproveElite={(id) => {
+            setPendingEliteRequests(prev => prev.filter(r => r.id !== id));
+            setToast({ message: "Node Promoted to Elite", type: 'premium' });
+          }} />}
+
+          {activeView === 'manual' && <UserManual />}
+          {activeView === 'disclaimer' && <DisclaimerPage />}
+          {activeView === 'privacy' && <PrivacyPolicy />}
+          {activeView === 'about' && <AboutUs />}
+          {activeView === 'contact' && <ContactUs />}
+          {activeView === 'sitemap' && <Sitemap onNavigate={setActiveView} />}
+          {activeView === 'terms' && <TermsConditions />}
+          {activeView === 'widgets' && <WidgetGenerator />}
         </div>
-
-        <footer className="mt-auto p-12 border-t border-slate-200 dark:border-white/5 bg-slate-100/40 dark:bg-black/40 text-slate-500">
-           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
-              <div className="space-y-6 max-w-sm">
-                <NexusLogo size="sm" className="opacity-50" />
-                <p className="text-xs leading-relaxed">4D Nexus Pro intelligence ecosystem. Secured by Nexus Chain proofing.</p>
-                <div className="flex gap-4">
-                  <div onClick={() => !currentUser ? handleGuestAttempt() : null} className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all cursor-pointer"><Facebook size={14}/></div>
-                  <div onClick={() => !currentUser ? handleGuestAttempt() : null} className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-blue-400 hover:text-white transition-all cursor-pointer"><Twitter size={14}/></div>
-                  <div onClick={() => !currentUser ? handleGuestAttempt() : null} className="w-8 h-8 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all cursor-pointer"><Instagram size={14}/></div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-12">
-                <div className="space-y-4">
-                  <h4 className="text-[10px] font-black uppercase text-slate-900 dark:text-white tracking-widest">Platform</h4>
-                  <ul className="text-xs space-y-2">
-                    <li><button onClick={()=>setActiveView('dashboard')} className="hover:text-blue-600 transition-colors">{t.nav.dashboard}</button></li>
-                    <li><button onClick={()=>setActiveView('stats')} className="hover:text-blue-600 transition-colors">{t.nav.stats}</button></li>
-                    <li><button onClick={() => setActiveView('premium')} className="hover:text-blue-600 transition-colors">{t.nav.premium}</button></li>
-                  </ul>
-                </div>
-                <div className="space-y-4">
-                  <h4 className="text-[10px] font-black uppercase text-slate-900 dark:text-white tracking-widest">Legal</h4>
-                  <ul className="text-xs space-y-2">
-                    <li><button onClick={()=>setActiveView('disclaimer')} className="hover:text-blue-600 transition-colors">Disclaimer</button></li>
-                    <li><button onClick={()=>setActiveView('privacy')} className="hover:text-blue-600 transition-colors">Privacy Policy</button></li>
-                  </ul>
-                </div>
-              </div>
-           </div>
-        </footer>
-
-        {!isPremium && (
-          <div className="fixed bottom-0 left-0 md:left-72 right-0 z-[145] h-20 md:h-24 glass-strong border-t border-white/10 flex items-center justify-center animate-in slide-in-from-bottom-full duration-1000">
-             <div className="w-full max-w-4xl px-4 flex items-center gap-4">
-                <div className="hidden sm:block shrink-0 p-2 bg-blue-600/10 rounded-lg border border-blue-500/20">
-                   <Monitor size={16} className="text-blue-500" />
-                </div>
-                <div className="flex-1">
-                   <AdSensePlaceholder variant="BANNER" slot="GLOBAL_STICKY_BOTTOM" className="!bg-transparent !border-0 h-16 md:h-20" />
-                </div>
-                <div className="hidden lg:flex shrink-0 w-32 items-center justify-center">
-                   <AdSensePlaceholder variant="VIDEO" slot="STICKY_CORNER_VIDEO" className="!bg-transparent !border-0 !h-16" />
-                </div>
-                <button onClick={() => setToast({ message: 'Elite Membership required to remove ads.', type: 'premium' })} className="p-2 text-slate-500 hover:text-white transition-colors">
-                   <X size={16} />
-                </button>
-             </div>
-          </div>
-        )}
       </main>
+
+      {selectedResult && (
+        <ProviderResultsModal 
+          result={selectedResult} 
+          onClose={() => setSelectedResult(null)} 
+          lang={lang} 
+          isLoggedIn={!!currentUser} 
+          onGuestAttempt={handleGuestAttempt}
+          isFavorite={isResultFavorite(selectedResult)}
+          onToggleFavorite={() => toggleFavorite(selectedResult)}
+          onShare={(e) => { e.stopPropagation(); setSharingResult(selectedResult); }}
+        />
+      )}
+
+      {sharingResult && <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />}
+
+      <LoginModal 
+        isOpen={showLogin} onClose={() => setShowLogin(false)} lang={lang} 
+        onLogin={(u) => { setCurrentUser(u); setShowLogin(false); }} onCreateId={() => {}} 
+      />
+      
+      <AIChatAssistant />
     </div>
   );
 };

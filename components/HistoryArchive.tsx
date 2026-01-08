@@ -4,39 +4,24 @@ import {
   Search, 
   Calendar, 
   Filter, 
-  Clock, 
-  Download, 
-  ChevronRight, 
   History, 
   Database, 
-  Sparkles, 
-  TrendingUp, 
   Info, 
-  CheckCircle2, 
-  Settings, 
-  X, 
-  Activity, 
-  Server, 
   Zap, 
-  Loader2, 
-  Check, 
-  Globe, 
-  ShieldCheck, 
-  Box, 
-  AlertTriangle, 
+  RotateCcw,
   Target, 
   Plus, 
   Hash,
   Trash2,
   Bell,
-  ShieldAlert,
+  ShieldCheck,
   ChevronDown,
-  ArrowUpRight,
-  Flame,
-  RotateCcw,
-  LayoutGrid
+  Trophy,
+  X,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
-import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from '../constants';
+import { MOCK_RESULTS, LANGUAGES } from '../constants';
 import { ResultCard } from './ResultCard';
 import { LotteryProvider, LotteryResult } from '../types';
 import { ShadowButton } from './ShadowButton';
@@ -55,40 +40,11 @@ interface WatchedNumber {
   timestamp: number;
 }
 
-// Visual themes for the quick-access chips
-const PROVIDER_THEMES: Record<string, string> = {
-  [LotteryProvider.MAGNUM]: 'border-amber-500/50 text-amber-500 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.2)]',
-  [LotteryProvider.TOTO]: 'border-red-500/50 text-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]',
-  [LotteryProvider.DAMACAI]: 'border-blue-500/50 text-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.2)]',
-  [LotteryProvider.SINGAPORE]: 'border-blue-400/50 text-blue-400 bg-blue-400/10 shadow-[0_0_15px_rgba(96,165,250,0.2)]',
-  [LotteryProvider.GDLOTTO]: 'border-red-600/50 text-red-600 bg-red-600/10 shadow-[0_0_15px_rgba(220,38,38,0.2)]',
-  'All': 'border-blue-500 text-white bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]'
-};
-
-// Fixed TooltipWrapper children prop type to be optional to resolve "children missing" error
-const TooltipWrapper = ({ children, text }: { children?: React.ReactNode, text: string }) => {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="relative inline-block" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      {children}
-      {show && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-1 pointer-events-none">
-          <p className="text-[10px] text-slate-300 font-medium leading-relaxed">{text}</p>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn = false, onGuestAttempt, onMatch }) => {
   const [searchNumber, setSearchNumber] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<LotteryProvider | 'All'>('All');
   const [selectedYear, setSelectedYear] = useState('2024');
   const [drawDayFilter, setDrawDayFilter] = useState<'All' | 'Wed' | 'Sat' | 'Sun' | 'Special'>('All');
-  const [isScanning, setIsScanning] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
   
   const [myNumbers, setMyNumbers] = useState<WatchedNumber[]>(() => {
     const saved = localStorage.getItem('nexus_my_numbers');
@@ -102,10 +58,6 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
   useEffect(() => {
     localStorage.setItem('nexus_my_numbers', JSON.stringify(myNumbers));
   }, [myNumbers]);
-
-  const hasActiveFilters = useMemo(() => {
-    return searchNumber !== '' || selectedProvider !== 'All' || selectedYear !== '2024' || drawDayFilter !== 'All';
-  }, [searchNumber, selectedProvider, selectedYear, drawDayFilter]);
 
   const resetFilters = () => {
     setSearchNumber('');
@@ -126,7 +78,7 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
       const matchYear = res.drawDate.startsWith(selectedYear);
       
       const date = new Date(res.drawDate);
-      const day = date.getDay(); // 0 is Sunday, 3 is Wed, 6 is Sat
+      const day = date.getDay(); 
       
       let matchDay = true;
       if (drawDayFilter === 'Wed') matchDay = day === 3;
@@ -155,14 +107,20 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
     setMyNumbers([newEntry, ...myNumbers]);
     setInputNum('');
 
-    // Check for immediate match in archive
-    const foundMatch = filteredResults.find(res => {
-        const pMatch = newEntry.provider === 'All' || res.provider === newEntry.provider;
-        return pMatch && (res.first === newEntry.number || res.second === newEntry.number || res.third === newEntry.number);
+    // Immediate check for matches in the current archive context
+    const match = MOCK_RESULTS.find(res => {
+      const providerMatch = newEntry.provider === 'All' || res.provider === newEntry.provider;
+      return providerMatch && (
+        res.first === newEntry.number || 
+        res.second === newEntry.number || 
+        res.third === newEntry.number ||
+        res.specials?.includes(newEntry.number) ||
+        res.consolations?.includes(newEntry.number)
+      );
     });
-    
-    if (foundMatch && onMatch) {
-        onMatch(foundMatch, newEntry.number);
+
+    if (match && onMatch) {
+      onMatch(match, newEntry.number);
     }
   };
 
@@ -170,39 +128,44 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
     setMyNumbers(myNumbers.filter(n => n.id !== id));
   };
 
+  // Helper to determine if a card should be highlighted based on watchlist
+  const getWatchlistHighlight = (result: LotteryResult) => {
+    const matchingWatchNode = myNumbers.find(node => {
+      const pMatch = node.provider === 'All' || result.provider === node.provider;
+      return pMatch && (
+        result.first === node.number || 
+        result.second === node.number || 
+        result.third === node.number ||
+        result.specials?.includes(node.number) ||
+        result.consolations?.includes(node.number)
+      );
+    });
+    return matchingWatchNode?.number || "";
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-      {/* Header & Reset Control */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3 text-slate-900 dark:text-white">
             <History className="text-blue-500" size={28} />
             {t.nav.archive}
           </h2>
-          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">Historical Ledger Synchronization</p>
+          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-2">Temporal Pattern Synchronization</p>
         </div>
-        <div className="flex items-center gap-3">
-          {hasActiveFilters && (
-            <button 
-              onClick={resetFilters}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600/10 border border-red-500/30 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20 transition-all text-red-500"
-            >
-              <RotateCcw size={14} /> CLEAR FILTERS
-            </button>
-          )}
-          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-6 py-2.5 rounded-xl glass border border-white/10 text-[10px] font-black uppercase tracking-widest hover:border-blue-500/30 transition-all text-blue-400">
-            <Download size={14} /> EXPORT DATA
-          </button>
-        </div>
+        <button 
+          onClick={resetFilters}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600/10 border border-red-500/30 text-[10px] font-black uppercase tracking-widest hover:bg-red-600/20 transition-all text-red-500"
+        >
+          <RotateCcw size={14} /> Reset Filter Matrix
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          
           {/* Main Filter Matrix */}
           <div className="glass p-8 rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/5 to-transparent space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* Number Signature Search */}
               <div className="md:col-span-2 relative group">
                 <input 
                   type="text" 
@@ -213,14 +176,17 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-12 py-5 text-sm font-orbitron focus:outline-none focus:border-blue-500/50 transition-all text-white placeholder:text-slate-700"
                 />
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                   <TooltipWrapper text="Filter results containing this specific digit sequence instantly.">
-                      <Info size={14} className="text-slate-600 cursor-help" />
-                   </TooltipWrapper>
-                </div>
+                {searchNumber && (
+                  <button 
+                    onClick={() => setSearchNumber('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all animate-in fade-in zoom-in group"
+                    title="Clear Search"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
 
-              {/* Year Filter */}
               <div className="relative">
                 <select 
                   value={selectedYear}
@@ -232,14 +198,8 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                   ))}
                 </select>
                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <TooltipWrapper text="Synchronize with results from a specific annual ledger.">
-                    <Info size={12} className="text-slate-700 pointer-events-auto cursor-help" />
-                  </TooltipWrapper>
-                </div>
               </div>
 
-              {/* Provider Filter */}
               <div className="md:col-span-2 relative">
                 <select 
                   value={selectedProvider}
@@ -253,29 +213,18 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                 </select>
                 <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
                 <ChevronDown className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-700 pointer-events-none" size={14} />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                   <TooltipWrapper text="Isolate records from a specific 4D provider or view the aggregated global feed.">
-                      <Info size={12} className="text-slate-700 cursor-help" />
-                   </TooltipWrapper>
-                </div>
               </div>
             </div>
 
-            {/* Draw Day Cycle Filter */}
             <div className="flex flex-wrap items-center gap-3 border-t border-white/5 pt-6">
-               <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mr-4 flex items-center gap-2">
-                 Temporal Filter
-                 <TooltipWrapper text="Limit the view to specific weekly draw cycles or special government draws.">
-                    <Info size={10} className="text-slate-700 cursor-help" />
-                 </TooltipWrapper>
-               </span>
+               <span className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mr-4">Temporal Cycle</span>
                {(['All', 'Wed', 'Sat', 'Sun', 'Special'] as const).map(day => (
                  <button
                    key={day}
                    onClick={() => setDrawDayFilter(day)}
                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all ${drawDayFilter === day ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
                  >
-                   {day === 'All' ? 'Full Archive' : day === 'Special' ? 'Special Draw' : `${day} Cycle`}
+                   {day}
                  </button>
                ))}
             </div>
@@ -293,31 +242,27 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                     <p className="text-[11px] font-bold text-slate-200 uppercase">{filteredResults.length} Result Packets Found</p>
                   </div>
                </div>
-               {searchNumber && (
-                 <div className="animate-pulse flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">High Intensity Match Scan Active</span>
-                 </div>
-               )}
             </div>
 
             <div className="space-y-6">
               {filteredResults.length > 0 ? (
-                filteredResults.map((res, i) => (
-                  <ResultCard 
-                    key={`${res.provider}-${res.drawDate}-${i}`} 
-                    result={res} 
-                    lang={lang} 
-                    isLoggedIn={isLoggedIn} 
-                    onGuestAttempt={onGuestAttempt} 
-                    highlightQuery={searchNumber}
-                  />
-                ))
+                filteredResults.map((res, i) => {
+                  const watchlistHit = getWatchlistHighlight(res);
+                  return (
+                    <ResultCard 
+                      key={`${res.provider}-${res.drawDate}-${i}`} 
+                      result={res} 
+                      lang={lang} 
+                      isLoggedIn={isLoggedIn} 
+                      onGuestAttempt={onGuestAttempt} 
+                      highlightQuery={searchNumber || watchlistHit}
+                    />
+                  );
+                })
               ) : (
                 <div className="glass rounded-[3rem] p-24 text-center border border-dashed border-white/10">
                   <Database className="mx-auto text-slate-800 mb-6" size={64} />
                   <h3 className="text-2xl font-orbitron font-bold text-slate-600 uppercase tracking-widest">No Signals Found</h3>
-                  <p className="text-xs text-slate-600 mt-3 max-w-sm mx-auto leading-relaxed">The Archive Engine could not locate data for the current filter configuration.</p>
                   <button onClick={resetFilters} className="mt-8 text-[10px] font-black text-blue-500 hover:text-blue-400 flex items-center gap-2 mx-auto">
                     <RotateCcw size={14} /> Reset Filter Matrix
                   </button>
@@ -337,9 +282,6 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                   <Target className="text-amber-500" size={20} />
                   My Numbers
                 </h3>
-                <TooltipWrapper text="Your personal vault of 4D signatures. These are synced against the archive for matches.">
-                   <Info size={14} className="text-slate-600 cursor-help" />
-                </TooltipWrapper>
              </div>
 
              <div className="space-y-4">
@@ -381,7 +323,13 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                    {myNumbers.map((entry) => {
                       const hasMatch = MOCK_RESULTS.some(r => {
                           const pMatch = entry.provider === 'All' || r.provider === entry.provider;
-                          return pMatch && (r.first === entry.number || r.second === entry.number || r.third === entry.number);
+                          return pMatch && (
+                            r.first === entry.number || 
+                            r.second === entry.number || 
+                            r.third === entry.number ||
+                            r.specials?.includes(entry.number) ||
+                            r.consolations?.includes(entry.number)
+                          );
                       });
 
                       return (
@@ -412,7 +360,7 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                    })}
                    {myNumbers.length === 0 && (
                      <div className="py-20 text-center opacity-30">
-                        <Box size={40} className="mx-auto text-slate-600 mb-3" />
+                        <Database size={40} className="mx-auto text-slate-600 mb-3" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Vault Empty</p>
                      </div>
                    )}
@@ -421,9 +369,9 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
 
              <div className="pt-4 border-t border-white/5 flex justify-between items-center">
                 <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1">
-                   <ShieldCheck size={10} /> Local Persistence: ON
+                   <ShieldCheck size={10} /> Local persistence active
                 </span>
-                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Total: {myNumbers.length} Nodes</span>
+                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{myNumbers.length} Nodes</span>
              </div>
           </div>
         </div>

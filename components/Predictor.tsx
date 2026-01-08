@@ -3,8 +3,27 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { predictionService } from '../services/geminiService';
 import { PredictionResult } from '../types';
 import { ShadowButton } from './ShadowButton';
-// Added Loader2 to the imports from lucide-react to fix the reference error on line 138
-import { BrainCircuit, Activity, TrendingUp, Info, Crown, Lock, Layers, Sparkles, RefreshCw, PlayCircle, BarChart, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { 
+  BrainCircuit, 
+  Activity, 
+  TrendingUp, 
+  Info, 
+  Crown, 
+  Lock, 
+  Layers, 
+  Sparkles, 
+  RefreshCw, 
+  PlayCircle, 
+  BarChart, 
+  ChevronDown, 
+  ChevronUp, 
+  Loader2, 
+  Zap, 
+  X,
+  Target,
+  ShieldCheck,
+  Cpu
+} from 'lucide-react';
 import { LANGUAGES } from '../constants';
 import { FrequencyNode } from '../App';
 
@@ -21,24 +40,9 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResults, setSimulationResults] = useState<{number: string, count: number}[]>([]);
   const [showSimResults, setShowSimResults] = useState(false);
+  const [selectedPrediction, setSelectedPrediction] = useState<PredictionResult | null>(null);
 
   const t = LANGUAGES[lang];
-
-  const heatmapInsight = useMemo(() => {
-    const topPerPos = [1, 2, 3, 4].map(p => {
-      const nodes = heatmapData.filter(n => n.pos === p);
-      return nodes.sort((a, b) => b.freq - a.freq)[0];
-    });
-    
-    const outlier = [...heatmapData].sort((a, b) => b.freq - a.freq)[0];
-    const avgSync = topPerPos.reduce((acc, curr) => acc + curr.freq, 0) / 4;
-    return {
-      topSequence: topPerPos.map(n => n.digit).join(''),
-      outlierNode: `P${outlier.pos}-D${outlier.digit}`,
-      outlierFreq: outlier.freq,
-      avgSync: Math.floor(avgSync)
-    };
-  }, [heatmapData]);
 
   const fetchPredictions = async () => {
     setLoading(true);
@@ -83,6 +87,64 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
     <div className={`glass rounded-3xl p-6 overflow-hidden border relative transition-all duration-500 ${
       isPremium ? 'border-amber-500/30 bg-gradient-to-br from-amber-600/5 to-transparent' : 'border-white/5'
     }`}>
+      {/* Neural Manifest Modal */}
+      {selectedPrediction && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl animate-in fade-in" onClick={() => setSelectedPrediction(null)}></div>
+           <div className="relative w-full max-w-lg glass rounded-[3rem] border border-blue-500/30 p-10 space-y-8 shadow-[0_0_100px_rgba(59,130,246,0.2)] animate-in zoom-in slide-in-from-bottom-8">
+              <div className="flex justify-between items-center">
+                 <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-2xl bg-blue-600/10 text-blue-500 border border-blue-500/20">
+                       <BrainCircuit size={28} />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-orbitron font-bold text-white">Neural Manifest</h3>
+                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Deep Reasoning Report</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedPrediction(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-500">
+                    <X size={24} />
+                 </button>
+              </div>
+
+              <div className="text-center space-y-2 py-6 relative">
+                 <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                    <div className="w-48 h-48 rounded-full border-2 border-blue-500 border-dashed animate-spin-slow"></div>
+                 </div>
+                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.5em]">Target Signature</p>
+                 <h2 className="text-8xl font-orbitron font-black text-white glow-gold tracking-[0.2em]">{selectedPrediction.number}</h2>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                 {[
+                   { label: 'Entropy', value: '4.2W', color: 'text-purple-400', icon: Zap },
+                   { label: 'Convergence', value: `${(selectedPrediction.probability * 100).toFixed(0)}%`, color: 'text-green-400', icon: TrendingUp },
+                   { label: 'Pos. Drift', value: '0.02', color: 'text-amber-400', icon: Activity },
+                 ].map((stat, i) => (
+                   <div key={i} className="p-4 rounded-3xl bg-white/5 border border-white/5 text-center space-y-1">
+                      <p className="text-[8px] font-black text-slate-500 uppercase">{stat.label}</p>
+                      <p className={`text-sm font-orbitron font-bold ${stat.color}`}>{stat.value}</p>
+                   </div>
+                 ))}
+              </div>
+
+              <div className="p-6 rounded-3xl bg-black/40 border border-white/10 space-y-4">
+                 <div className="flex items-center gap-2">
+                    <Info size={14} className="text-blue-500" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase">Algorithmic Breakdown</span>
+                 </div>
+                 <p className="text-xs text-slate-300 italic leading-relaxed">
+                   "{selectedPrediction.reasoning}"
+                 </p>
+              </div>
+
+              <ShadowButton variant="primary" onClick={() => setSelectedPrediction(null)} className="w-full py-5 text-xs font-black uppercase">
+                 Acknowledge Intelligence
+              </ShadowButton>
+           </div>
+        </div>
+      )}
+
       {isPremium && (
         <div className="absolute top-4 right-6 flex items-center gap-2 px-3 py-1 bg-amber-500/10 rounded-full border border-amber-500/20 z-10">
            <Crown size={12} className="text-amber-500" />
@@ -161,7 +223,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
                   </div>
                 ))}
              </div>
-             <p className="text-[7px] text-slate-600 font-bold uppercase text-center pt-1">Distribution results based on 100 random neural passes</p>
+             <p className="text-[7px] text-slate-600 font-bold uppercase text-center pt-1">Distribution based on 100 neural passes</p>
           </div>
         )}
       </div>
@@ -177,21 +239,28 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
       ) : (
         <div className="space-y-4">
           {predictions.map((p, idx) => (
-            <div key={idx} className={`rounded-2xl p-4 border transition-all hover:translate-x-2 flex items-center justify-between group ${
-              isPremium ? 'bg-amber-500/5 border-amber-500/10 hover:border-amber-500/40' : 'bg-white/5 border-white/5 hover:border-purple-500/30'
-            }`}>
+            <div 
+              key={idx} 
+              onClick={() => setSelectedPrediction(p)}
+              className={`rounded-2xl p-4 border transition-all hover:translate-x-2 flex items-center justify-between group cursor-pointer ${
+                isPremium ? 'bg-amber-500/5 border-amber-500/10 hover:border-amber-500/40' : 'bg-white/5 border-white/5 hover:border-purple-500/30'
+              }`}
+            >
               <div className="space-y-1">
                  <div className="flex items-center gap-2">
                     <span className={`text-3xl font-orbitron font-bold tracking-[0.2em] ${isPremium ? 'text-amber-500' : 'text-purple-400'}`}>{p.number}</span>
                     {idx === 0 && <span className="px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 text-[7px] font-black uppercase">Alpha</span>}
                  </div>
-                 <p className="text-[10px] text-slate-500 italic font-medium leading-tight group-hover:text-slate-300 transition-colors">"{p.reasoning}"</p>
+                 <p className="text-[10px] text-slate-500 italic font-medium leading-tight group-hover:text-slate-300 transition-colors line-clamp-1">"{p.reasoning}"</p>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] text-slate-500 uppercase block font-bold tracking-tighter">Confidence</span>
-                <span className={`text-lg font-orbitron font-black ${p.probability > 0.8 ? 'text-green-500' : 'text-amber-500'}`}>
-                    {(p.probability * 100).toFixed(1)}%
-                </span>
+              <div className="text-right flex items-center gap-3">
+                <div>
+                   <span className="text-[10px] text-slate-500 uppercase block font-bold tracking-tighter">Confidence</span>
+                   <span className={`text-lg font-orbitron font-black ${p.probability > 0.8 ? 'text-green-500' : 'text-amber-500'}`}>
+                       {(p.probability * 100).toFixed(0)}%
+                   </span>
+                </div>
+                <ChevronDown size={14} className="text-slate-700 -rotate-90 group-hover:text-white transition-colors" />
               </div>
             </div>
           ))}
@@ -200,7 +269,7 @@ export const Predictor: React.FC<PredictorProps> = ({ isPremium = false, lang, h
 
       <div className="mt-8 flex items-start gap-3 text-[9px] text-slate-600 border-t border-white/5 pt-5">
         <Info size={16} className="shrink-0 text-slate-700" />
-        <p className="leading-relaxed">Predictions and simulations are probabilistic models. Lottery outcomes remain random. 4D Nexus Pro advocates for Responsible Gaming.</p>
+        <p className="leading-relaxed">Predictions are probabilistic models. Lottery outcomes remain random. 4D Nexus Pro advocates for Responsible Gaming.</p>
       </div>
 
       <ShadowButton 
