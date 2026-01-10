@@ -20,10 +20,10 @@ import {
   LayoutGrid,
   Zap,
   Server,
-  // Added Sparkles icon to resolve the 'Cannot find name Sparkles' error on line 110
   Sparkles
 } from 'lucide-react';
 import { ShadowButton } from './ShadowButton';
+import { supabase } from '../services/supabase';
 
 const PageHeader: React.FC<{ icon: any, title: string, subtitle: string, color: string }> = ({ icon: Icon, title, subtitle, color }) => (
   <header className="space-y-4 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -138,7 +138,7 @@ export const AboutUs: React.FC = () => (
     <div className="glass p-12 md:p-20 rounded-[4rem] text-center border border-white/10 bg-gradient-to-br from-blue-600/5 to-transparent relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[120px] pointer-events-none" />
       <h2 className="text-4xl font-orbitron font-bold mb-8">Global Operations</h2>
-      <p className="text-slate-400 text-lg mb-12 max-w-2xl mx-auto">Founded in the tech hub of Kuala Lumpur, our vision is to democratize lottery data through professional-grade analytics tools available to every punter.</p>
+      <p className="text-slate-400 text-lg max-w-2xl mx-auto">Founded in the tech hub of Kuala Lumpur, our vision is to democratize lottery data through professional-grade analytics tools available to every punter.</p>
       <div className="flex flex-wrap justify-center gap-12 grayscale opacity-40">
         {['KL HUB', 'SG NODE', 'HK RELAY', 'SYD DEPOT'].map(city => (
           <div key={city} className="font-orbitron font-black text-sm tracking-[0.5em]">{city}</div>
@@ -151,14 +151,35 @@ export const AboutUs: React.FC = () => (
 export const ContactUs: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError(null);
+
+    const formData = new FormData(e.target as HTMLFormElement);
+    const payload = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      category: formData.get('category') as string,
+      message: formData.get('message') as string,
+    };
+
+    try {
+      const { error: insertError } = await supabase
+        .from('inquiries')
+        .insert([payload]);
+
+      if (insertError) throw insertError;
+
       setSubmitted(true);
-    }, 1500);
+    } catch (err: any) {
+      console.error("Submission failed:", err);
+      setError(err.message || "Failed to transmit signal to Nexus Command.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -181,7 +202,7 @@ export const ContactUs: React.FC = () => {
               </div>
               <div className="space-y-2">
                  <h3 className="text-2xl font-orbitron font-bold text-white uppercase tracking-widest">Signal Transmitted</h3>
-                 <p className="text-slate-500 max-w-xs mx-auto">Your intelligence request is being routed to the appropriate sector. Response ETA: 2 Neural Minutes.</p>
+                 <p className="text-slate-500 max-w-xs mx-auto">Your intelligence request is being routed to the appropriate sector. Your data has been logged in the Nexus database.</p>
               </div>
               <ShadowButton variant="secondary" onClick={() => setSubmitted(false)} className="px-10">Return to Comms</ShadowButton>
             </div>
@@ -190,26 +211,34 @@ export const ContactUs: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-2">Operator Name</label>
-                   <input required type="text" placeholder="John Doe" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-white transition-all" />
+                   <input required name="name" type="text" placeholder="John Doe" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-white transition-all" />
                 </div>
                 <div className="space-y-1">
                    <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-2">Handshake Email</label>
-                   <input required type="email" placeholder="nexus@operator.ai" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-white transition-all" />
+                   <input required name="email" type="email" placeholder="nexus@operator.ai" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-white transition-all" />
                 </div>
               </div>
               <div className="space-y-1">
                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-2">Transmission Category</label>
-                 <select className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-slate-400 font-bold appearance-none">
-                    <option>General Intelligence Inquiry</option>
-                    <option>Technical Hub Maintenance</option>
-                    <option>Elite Membership Escalation</option>
-                    <option>Business Data Licensing</option>
+                 <select name="category" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-slate-400 font-bold appearance-none">
+                    <option value="General Intelligence">General Intelligence Inquiry</option>
+                    <option value="Technical Maintenance">Technical Hub Maintenance</option>
+                    <option value="Elite Membership">Elite Membership Escalation</option>
+                    <option value="Business Data">Business Data Licensing</option>
                  </select>
               </div>
               <div className="space-y-1">
                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-2">Manifest Details</label>
-                 <textarea required placeholder="Outline your inquiry or node issues..." rows={6} className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-white transition-all resize-none"></textarea>
+                 <textarea required name="message" placeholder="Outline your inquiry or node issues..." rows={6} className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:border-purple-500/50 outline-none text-white transition-all resize-none"></textarea>
               </div>
+              
+              {error && (
+                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold flex items-center gap-2">
+                  <AlertTriangle size={16} />
+                  {error}
+                </div>
+              )}
+
               <ShadowButton disabled={loading} variant="primary" className="w-full py-5 flex items-center justify-center gap-3 text-sm font-black uppercase tracking-widest">
                 {loading ? <RefreshCw className="animate-spin" size={20} /> : <Send size={20} />}
                 {loading ? 'Routing Transmission...' : 'Execute Intelligence Relay'}

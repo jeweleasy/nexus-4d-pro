@@ -86,12 +86,12 @@ import { ArExperience } from './components/ArExperience';
 import { DigitHeatmap } from './components/DigitHeatmap';
 import { GamingTools } from './components/GamingTools';
 import { RankingSystem } from './components/RankingSystem';
-import { RegistrationModal } from './components/RegistrationModal';
 import { LoginModal } from './components/LoginModal';
 import { HistoryArchive } from './components/HistoryArchive';
 import { PersonalWatchlist } from './components/PersonalWatchlist';
 import { SellerArchive } from './components/SellerArchive';
 import { LotteryProvider, LotteryResult, User, EliteRequest } from './types';
+import { supabase } from './services/supabase';
 import { 
   DisclaimerPage, 
   PrivacyPolicy, 
@@ -137,36 +137,15 @@ const App: React.FC = () => {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>([]);
   
-  const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_elite_requests');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  });
-
-  const [celebrationMatch, setCelebrationMatch] = useState<{ result: LotteryResult; num: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<LotteryProvider | 'All'>('All');
+  
   const mainRef = useRef<HTMLDivElement>(null);
-  const [isPremium, setIsPremium] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) { return null; }
-  });
-  
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
-  const [favorites, setFavorites] = useState<LotteryResult[]>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_pro_favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  });
+  const [favorites, setFavorites] = useState<LotteryResult[]>([]);
 
   const [heatmapData, setHeatmapData] = useState<FrequencyNode[]>(() => {
     const nodes: FrequencyNode[] = [];
@@ -184,58 +163,95 @@ const App: React.FC = () => {
 
   const t = LANGUAGES[lang] || LANGUAGES.EN;
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsHandshaking(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+  // Sync favorites from Supabase cloud ledger
+  const fetchUserData = async (userId: string) => {
+    try {
+      const { data: savedData } = await supabase
+        .from('saved_results')
+        .select('*')
+        .eq('user_id', userId);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (mainRef.current) {
-        setShowScrollTop(mainRef.current.scrollTop > 400);
+      if (savedData) {
+        const mappedResults: LotteryResult[] = savedData.map(d => ({
+          provider: d.provider as LotteryProvider,
+          type: '4D',
+          drawDate: d.draw_date,
+          drawNumber: d.draw_number,
+          first: d.first_prize,
+          status: 'Final',
+          timestamp: new Date(d.created_at).getTime()
+        }));
+        setFavorites(mappedResults);
       }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (profile) {
+        setCurrentUser(prev => prev ? ({
+          ...prev,
+          points: profile.points,
+          isPremium: profile.is_premium,
+          nexusId: profile.nexus_id || prev.nexusId
+        }) : null);
+      }
+    } catch (err) {
+      console.error("Neural sync interrupted:", err);
+    }
+  };
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { user } = session;
+        setCurrentUser({
+          id: user.id,
+          nexusId: user.user_metadata.nexus_id || 'EliteNode',
+          email: user.email!,
+          points: 15,
+          isPremium: false,
+          registrationDate: user.created_at,
+          avatarId: user.user_metadata.avatar_id || 1
+        });
+        await fetchUserData(user.id);
+      }
+      setIsHandshaking(false);
     };
-    const mainEl = mainRef.current;
-    mainEl?.addEventListener('scroll', handleScroll);
-    return () => mainEl?.removeEventListener('scroll', handleScroll);
+
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        const { user } = session;
+        setCurrentUser({
+          id: user.id,
+          nexusId: user.user_metadata.nexus_id || 'EliteNode',
+          email: user.email!,
+          points: 15,
+          isPremium: false,
+          registrationDate: user.created_at,
+          avatarId: user.user_metadata.avatar_id || 1
+        });
+        fetchUserData(user.id);
+      } else {
+        setCurrentUser(null);
+        setFavorites([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem('nexus_pro_favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  useEffect(() => {
-    localStorage.setItem('nexus_pro_lang', lang);
-  }, [lang]);
-
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('nexus_user', JSON.stringify(currentUser));
-      setIsPremium(currentUser.isPremium);
-      if (currentUser.nexusId === 'admin_jewel') setIsAdmin(true);
-    } else {
-      localStorage.removeItem('nexus_user');
-      setIsAdmin(false);
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setToast({ message: "Node Securely Disconnected", type: 'info' });
+    setShowProfileMenu(false);
+  };
 
   const navigateTo = (view: View) => {
     setActiveView(view);
@@ -243,43 +259,89 @@ const App: React.FC = () => {
     setSidebarOpen(false);
   };
 
-  const handleSelectProvider = (provider: LotteryProvider) => {
-    const latestForProvider = MOCK_RESULTS
-      .filter(r => r.provider === provider)
-      .sort((a, b) => b.timestamp - a.timestamp)[0];
-    if (latestForProvider) setSelectedResult(latestForProvider);
-  };
-
   const handleGuestAttempt = () => {
     setToast({ message: t.common.guestRestriction, type: 'error' });
   };
 
-  const handleWatchlistMatch = (result: LotteryResult, matchedNum: string) => {
-    setCelebrationMatch({ result, num: matchedNum });
-    setToast({ message: "Victory Signature Detected!", type: 'success' });
-  };
+  const toggleFavorite = async (result: LotteryResult) => {
+    if (!currentUser) {
+      handleGuestAttempt();
+      return;
+    }
 
-  const toggleFavorite = (result: LotteryResult) => {
-    setFavorites(prev => {
-      const exists = prev.some(f => f.provider === result.provider && f.drawDate === result.drawDate);
+    const exists = favorites.find(f => f.provider === result.provider && f.drawDate === result.drawDate);
+    
+    try {
       if (exists) {
-        setToast({ message: `${result.provider} removed`, type: 'info' });
-        return prev.filter(f => !(f.provider === result.provider && f.drawDate === result.drawDate));
+        await supabase
+          .from('saved_results')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('provider', result.provider)
+          .eq('draw_date', result.drawDate);
+          
+        setFavorites(prev => prev.filter(f => !(f.provider === result.provider && f.drawDate === result.drawDate)));
+        setToast({ message: `${result.provider} removed from cloud`, type: 'info' });
+      } else {
+        await supabase
+          .from('saved_results')
+          .insert({
+            user_id: currentUser.id,
+            provider: result.provider,
+            draw_date: result.drawDate,
+            draw_number: result.drawNumber,
+            first_prize: result.first
+          });
+
+        setFavorites(prev => [...prev, result]);
+        setToast({ message: `${result.provider} synced to library`, type: 'success' });
       }
-      setToast({ message: `${result.provider} saved`, type: 'success' });
-      return [...prev, result];
-    });
+    } catch (err) {
+      setToast({ message: "Link to Nexus Database failed", type: 'error' });
+    }
   };
 
   const isResultFavorite = (result: LotteryResult) => 
     favorites.some(f => f.provider === result.provider && f.drawDate === result.drawDate);
 
+  const handleRequestUpgrade = () => {
+    if (!currentUser) return;
+    const request: EliteRequest = {
+      id: `req-${Date.now()}`,
+      userId: currentUser.id,
+      nexusId: currentUser.nexusId,
+      email: currentUser.email,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+    setPendingEliteRequests(prev => [...prev, request]);
+    setToast({ message: "Elite Escalation Dispatched", type: 'premium' });
+  };
+
+  const handleApproveElite = (id: string) => {
+    const req = pendingEliteRequests.find(r => r.id === id);
+    if (!req) return;
+    
+    // Simulate user becoming premium
+    if (currentUser && currentUser.id === req.userId) {
+       setCurrentUser({ ...currentUser, isPremium: true });
+    }
+    
+    setPendingEliteRequests(prev => prev.filter(r => r.id !== id));
+    setToast({ message: "Node Upgraded to Elite Tier", type: 'success' });
+  };
+
   const displayResults = useMemo(() => {
-    const dateResults = MOCK_RESULTS.filter(res => res.drawDate === selectedDate);
-    if (dateResults.length > 0) return { results: dateResults, isFallback: false, label: t.common.officialResults, date: selectedDate };
-    const latestAvailableDate = [...MOCK_RESULTS].sort((a,b) => b.timestamp - a.timestamp)[0]?.drawDate || todayStr;
-    return { results: MOCK_RESULTS.filter(r => r.drawDate === latestAvailableDate), isFallback: true, label: t.common.latestResults, date: latestAvailableDate };
-  }, [selectedDate, t]);
+    const providerResults = activeTab === 'All' 
+      ? MOCK_RESULTS 
+      : MOCK_RESULTS.filter(res => res.provider === activeTab);
+
+    const dateResults = providerResults.filter(res => res.drawDate === selectedDate);
+    if (dateResults.length > 0) return { results: dateResults, label: t.common.officialResults, date: selectedDate };
+    
+    const latestAvailableDate = [...providerResults].sort((a,b) => b.timestamp - a.timestamp)[0]?.drawDate || todayStr;
+    return { results: providerResults.filter(r => r.drawDate === latestAvailableDate), label: t.common.latestResults, date: latestAvailableDate };
+  }, [selectedDate, t, activeTab]);
 
   if (isHandshaking) {
     return (
@@ -290,7 +352,7 @@ const App: React.FC = () => {
          </div>
          <div className="flex flex-col items-center space-y-2">
             <Loader2 className="text-blue-500 animate-spin" size={24} />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Establishing Handshake Protocol...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Initializing Neural Handshake...</p>
          </div>
       </div>
     );
@@ -312,83 +374,6 @@ const App: React.FC = () => {
     </button>
   );
 
-  const Footer = () => (
-    <footer className="mt-20 py-20 px-4 md:px-8 border-t border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-black/30">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-          <div className="space-y-6">
-            <NexusLogo size="md" onClick={() => navigateTo('dashboard')} className="cursor-pointer" />
-            <p className="text-sm text-slate-500 leading-relaxed font-medium">
-              Revolutionizing lottery intelligence through neural pattern discovery and real-time data flow synchronization.
-            </p>
-            <div className="flex items-center gap-4">
-               {[Facebook, Twitter, Youtube, Instagram].map((Icon, i) => (
-                 <button key={i} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-blue-500 transition-all">
-                    <Icon size={18} />
-                 </button>
-               ))}
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="font-orbitron font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white mb-6">Core Engine</h4>
-            <ul className="space-y-3">
-               {[
-                 { id: 'dashboard', label: 'Real-Time Matrix' },
-                 { id: 'stats', label: 'Deep Analytics' },
-                 { id: 'archive', label: 'Historical Ledger' },
-                 { id: 'predictions', label: 'Neural Core' }
-               ].map(l => (
-                 <li key={l.id}><button onClick={() => navigateTo(l.id as View)} className="text-sm text-slate-500 hover:text-blue-500 font-bold transition-colors">{l.label}</button></li>
-               ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-orbitron font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white mb-6">Compliance</h4>
-            <ul className="space-y-3">
-               {[
-                 { id: 'disclaimer', label: 'Legal Disclaimer' },
-                 { id: 'privacy', label: 'Privacy Standards' },
-                 { id: 'terms', label: 'Terms of Sync' },
-                 { id: 'sitemap', label: 'Neural Sitemap' }
-               ].map(l => (
-                 <li key={l.id}><button onClick={() => navigateTo(l.id as View)} className="text-sm text-slate-500 hover:text-blue-500 font-bold transition-colors">{l.label}</button></li>
-               ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-orbitron font-bold text-xs uppercase tracking-widest text-slate-900 dark:text-white mb-6">Support Portal</h4>
-            <ul className="space-y-3">
-               {[
-                 { id: 'about', label: 'The Mission' },
-                 { id: 'manual', label: 'Node Operations' },
-                 { id: 'contact', label: 'Command Support' },
-                 { id: 'news', label: 'Industry Press' }
-               ].map(l => (
-                 <li key={l.id}><button onClick={() => navigateTo(l.id as View)} className="text-sm text-slate-500 hover:text-blue-500 font-bold transition-colors">{l.label}</button></li>
-               ))}
-            </ul>
-          </div>
-        </div>
-        
-        <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-           <div className="flex items-center gap-4">
-              <div className="p-1.5 rounded-lg bg-green-500/10 text-green-500 border border-green-500/20">
-                 <ShieldCheck size={14} />
-              </div>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">&copy; 2024 4D NEXUS PRO &bull; INTELLIGENCE PLATFORM v4.2</p>
-           </div>
-           <div className="flex items-center gap-6">
-              <span className="text-[8px] font-black text-slate-700 uppercase tracking-[0.3em]">Optimized for AdSense Integration</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
-           </div>
-        </div>
-      </div>
-    </footer>
-  );
-
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-transparent">
       {toast && (
@@ -400,38 +385,6 @@ const App: React.FC = () => {
           <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-green-500' : toast.type === 'premium' ? 'bg-amber-500' : toast.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
           <span className="text-xs font-bold font-orbitron tracking-wider text-center">{toast.message}</span>
         </div>
-      )}
-
-      {celebrationMatch && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-500" onClick={() => setCelebrationMatch(null)}></div>
-          <div className="relative glass rounded-[3rem] border-2 border-amber-500/40 p-8 sm:p-12 text-center space-y-8 shadow-[0_0_100px_rgba(245,158,11,0.2)] animate-in zoom-in slide-in-from-bottom-12 duration-700 max-w-lg">
-             <div className="relative z-10 space-y-4">
-                <div className="w-20 sm:w-24 h-20 sm:h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)] animate-bounce">
-                   <Trophy size={40} className="text-amber-500 sm:size-48" />
-                </div>
-                <h2 className="text-4xl sm:text-6xl font-orbitron font-black text-white glow-gold tracking-tighter">CONGRATS!</h2>
-                <p className="text-sm sm:text-xl font-orbitron font-bold text-amber-500 uppercase tracking-[0.3em]">Signature Match Detected</p>
-             </div>
-             <div className="relative z-10 bg-white/5 border border-white/10 rounded-[2rem] p-6 sm:p-8 space-y-4">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Matched Sequence</p>
-                <div className="text-6xl sm:text-8xl font-orbitron font-black text-white tracking-[0.1em]">{celebrationMatch.num}</div>
-                <div className="flex flex-col gap-1">
-                   <p className="text-lg font-orbitron font-bold text-blue-400">{celebrationMatch.result.provider}</p>
-                   <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest">{celebrationMatch.result.drawDate} &bull; Draw #{celebrationMatch.result.drawNumber}</p>
-                </div>
-             </div>
-             <div className="relative z-10 flex gap-4">
-                <ShadowButton onClick={() => setCelebrationMatch(null)} variant="gold" className="flex-1 py-4 sm:py-5 text-sm font-black uppercase">
-                  Collect Victory Data
-                </ShadowButton>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[155] md:hidden animate-in fade-in duration-300" onClick={() => setSidebarOpen(false)}></div>
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-[160] md:static w-72 h-full border-r border-slate-200 dark:border-white/5 p-6 flex flex-col gap-6 transition-transform duration-300 md:translate-x-0 bg-slate-50 dark:bg-[#050505] shadow-2xl md:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -447,7 +400,7 @@ const App: React.FC = () => {
           <NavItem icon={Heart} label={t.nav.favorites} id="favorites" />
           <NavItem icon={MessageCircle} label={t.nav.community} id="community" />
           <NavItem icon={Trophy} label={t.nav.challenges} id="challenges" />
-          <NavItem icon={Cpu} label={t.nav.predictions} id="predictions" badge={isPremium ? "PRO" : "LITE"} />
+          <NavItem icon={Cpu} label={t.nav.predictions} id="predictions" badge={currentUser?.isPremium ? "PRO" : "LITE"} />
           <NavItem icon={Newspaper} label={t.nav.news} id="news" />
           <NavItem icon={Code} label={t.nav.widgets} id="widgets" />
           <div className="my-4 border-t border-slate-200 dark:border-white/5"></div>
@@ -463,48 +416,32 @@ const App: React.FC = () => {
             <button onClick={() => setSidebarOpen(true)} className="md:hidden p-3 text-slate-500 hover:text-blue-500 transition-colors active:scale-95">
               <Menu size={26} />
             </button>
-            <div className="hidden lg:flex items-center gap-3 glass px-4 py-2 rounded-xl border border-white/5">
-              <Clock size={16} className="text-blue-500" />
-              <span className="text-xs font-orbitron font-bold tabular-nums">
-                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-            </div>
-            <VoiceSearch onCommand={(i, p) => setToast({ message: `AI Intent: ${i}`, type: 'info' })} />
+            <VoiceSearch onCommand={(i, p) => {
+               if (i === 'CHECK_RESULT' && p) setActiveTab(p as any);
+               if (i === 'VIEW_STATS') navigateTo('stats');
+               if (i === 'GENERATE_LUCKY') navigateTo('dashboard'); // Lucky engine is on dash
+               if (i === 'OPEN_COMMUNITY') navigateTo('community');
+               setToast({ message: `AI Intent: ${i}`, type: 'info' });
+            }} />
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="hidden xl:flex items-center gap-2 mr-4">
-                <div className={`h-2 w-2 rounded-full ${isPremium ? 'bg-amber-500' : currentUser ? 'bg-blue-500' : 'bg-slate-500'}`}></div>
-                <span className="text-[10px] font-black uppercase text-slate-500">
-                  {isPremium ? t.common.elite : currentUser ? t.common.verifiedNode : t.common.guestPunter}
-                </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <button onClick={() => setShowLangMenu(!showLangMenu)} className="p-2.5 rounded-xl glass border border-white/10 text-slate-500 hover:text-blue-500 transition-all flex items-center gap-2 active:scale-95">
-                  <Languages size={18} />
-                  <span className="hidden xl:block text-[10px] font-black">{lang}</span>
-                </button>
-                {showLangMenu && (
-                  <div className="absolute top-full right-0 mt-2 w-32 glass border border-white/10 rounded-2xl p-2 shadow-2xl animate-in zoom-in z-50">
-                    {(['EN', 'CN', 'MY'] as LangCode[]).map(l => (
-                      <button key={l} onClick={() => { setLang(l); setShowLangMenu(false); }} className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold ${lang === l ? 'bg-blue-600/10 text-blue-500' : 'text-slate-500 hover:bg-white/5'}`}>{l}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {currentUser ? (
               <div className="relative">
                 <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 sm:gap-3 glass p-1.5 rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all active:scale-95">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=user${currentUser.avatarId}`} className="w-8 h-8 rounded-xl border border-white/10" alt="Avatar" />
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`} className="w-8 h-8 rounded-xl border border-white/10" alt="Avatar" />
                   <div className="hidden sm:block pr-2 text-left">
                     <p className="text-[10px] font-black leading-tight">{currentUser.nexusId}</p>
-                    <p className="text-[8px] font-bold text-slate-500">{currentUser.points} PTS</p>
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Node Synchronized</p>
                   </div>
                 </button>
+                {showProfileMenu && (
+                  <div className="absolute top-full right-0 mt-2 w-48 glass border border-white/10 rounded-2xl p-2 shadow-2xl z-50 animate-in zoom-in duration-200">
+                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 rounded-xl text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors">
+                      <LogOut size={14} /> Disconnect Hub
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button onClick={() => setShowLogin(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95">
@@ -517,68 +454,31 @@ const App: React.FC = () => {
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 flex-1 w-full">
           {activeView === 'dashboard' && (
             <>
-              <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="text-lg sm:text-xl font-orbitron font-bold flex items-center gap-3">
-                    <div className="nexus-line nexus-line-amber"></div> {t.common.jackpotPulse}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                    <span className="text-[9px] font-black uppercase text-slate-500 hidden sm:inline">{t.common.syncActive}</span>
-                  </div>
-                </div>
-                <JackpotTracker />
-              </div>
-              <LogoTicker onSelectProvider={handleSelectProvider} />
+              <JackpotTracker />
+              <LogoTicker onSelectProvider={setActiveTab as any} />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/50 dark:bg-white/5 p-4 rounded-[1.5rem] border border-slate-200 dark:border-white/5">
-                    <div className="flex items-center gap-3">
-                      <Zap size={20} className="text-blue-500" />
-                      <div>
-                        <h2 className="text-sm font-orbitron font-bold uppercase">{displayResults.label}</h2>
-                        <p className="text-[9px] text-slate-500 font-bold">{displayResults.date}</p>
-                      </div>
+                  {displayResults.results.map((res, i) => (
+                    <div key={i} onClick={() => setSelectedResult(res)} className="cursor-pointer transition-transform hover:scale-[1.01]">
+                      <ResultCard 
+                        result={res} lang={lang} isLoggedIn={!!currentUser} 
+                        onGuestAttempt={handleGuestAttempt} 
+                        isFavorite={isResultFavorite(res)}
+                        onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }}
+                      />
                     </div>
-                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-[10px] font-black uppercase font-orbitron outline-none w-full sm:w-auto" />
-                  </div>
-                  <div className="grid grid-cols-1 gap-6">
-                    {displayResults.results.map((res, i) => (
-                      <div key={i} onClick={() => setSelectedResult(res)} className="cursor-pointer transition-transform hover:scale-[1.01] active:scale-[0.99]">
-                        <ResultCard 
-                          result={res} lang={lang} isLoggedIn={!!currentUser} 
-                          onGuestAttempt={handleGuestAttempt} 
-                          isFavorite={isResultFavorite(res)}
-                          onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
                 <div className="space-y-8">
-                  {currentUser && <PersonalWatchlist isLoggedIn={true} onGuestAttempt={handleGuestAttempt} onMatch={handleWatchlistMatch} />}
+                  <PersonalWatchlist isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} onMatch={(res, num) => {
+                     setToast({ message: `Signature Match: ${num} found in ${res.provider}!`, type: 'success' });
+                  }} />
                   <LuckyNumber lang={lang} heatmapData={heatmapData} />
-                  <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
-                  <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
+                  <Predictor isPremium={currentUser?.isPremium} lang={lang} heatmapData={heatmapData} />
                 </div>
               </div>
             </>
           )}
-
-          {activeView === 'predictions' && (
-            <div className="space-y-8 max-w-4xl mx-auto">
-               <div className="flex items-center gap-4">
-                  <Cpu className="text-amber-500" size={32} />
-                  <h2 className="text-3xl font-orbitron font-bold">Neural Core Activation</h2>
-               </div>
-               <Predictor isPremium={isPremium} lang={lang} heatmapData={heatmapData} />
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
-                  <LuckyNumber lang={lang} heatmapData={heatmapData} />
-               </div>
-            </div>
-          )}
-
           {activeView === 'stats' && (
             <div className="space-y-8">
                <h2 className="text-2xl sm:text-3xl font-orbitron font-bold">Deep Analytics Matrix</h2>
@@ -591,77 +491,53 @@ const App: React.FC = () => {
                </div>
             </div>
           )}
-
-          {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} onMatch={handleWatchlistMatch} />}
-          {activeView === 'news' && <NewsSection isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} onMatch={() => {}} />}
           {activeView === 'favorites' && (
-            <div className="space-y-8">
-              <h2 className="text-2xl sm:text-3xl font-orbitron font-bold">My Personal Library</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {favorites.length > 0 ? favorites.map((res, i) => (
-                   <ResultCard 
-                    key={i} result={res} lang={lang} isLoggedIn={!!currentUser} 
-                    onGuestAttempt={handleGuestAttempt} isFavorite={true}
-                    onToggleFavorite={() => toggleFavorite(res)}
-                   />
-                )) : (
-                  <div className="col-span-full py-40 text-center glass rounded-[3rem] border border-dashed border-white/10">
-                     <Heart size={64} className="mx-auto text-slate-800 mb-4" />
-                     <p className="text-slate-500 font-bold uppercase tracking-widest">Library Empty</p>
+             <div className="space-y-8">
+                <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" /> Cloud Saved Nodes</h2>
+                {favorites.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {favorites.map((res, i) => (
+                       <ResultCard 
+                        key={i} result={res} lang={lang} isLoggedIn={true} 
+                        isFavorite={true} onToggleFavorite={() => toggleFavorite(res)} 
+                       />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glass rounded-[3rem] py-32 text-center border-2 border-dashed border-white/5 opacity-50">
+                    <History size={48} className="mx-auto text-slate-500 mb-4" />
+                    <p className="font-orbitron font-bold uppercase tracking-widest">Cloud Library Empty</p>
+                    <ShadowButton variant="primary" onClick={() => navigateTo('dashboard')} className="mt-6">Sync New Results</ShadowButton>
                   </div>
                 )}
-              </div>
-            </div>
+             </div>
           )}
-          
-          {activeView === 'community' && <CommunityChat isPremium={isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'sellers' && <SellerArchive isAdmin={currentUser?.isPremium || false} onNavigateToContact={() => navigateTo('contact')} />}
+          {activeView === 'news' && <NewsSection isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} />}
+          {activeView === 'community' && <CommunityChat isPremium={currentUser?.isPremium} currentUser={currentUser} onUpdateUser={setCurrentUser} onGuestAttempt={handleGuestAttempt} />}
           {activeView === 'challenges' && <RankingSystem />}
-          {activeView === 'sellers' && <SellerArchive isAdmin={isAdmin} onNavigateToContact={() => setActiveView('contact')} />}
-          {activeView === 'premium' && <PremiumView isPremium={isPremium} currentUser={currentUser} pendingRequests={pendingEliteRequests} onRequestUpgrade={() => setToast({message: "Upgrade Request Synchronized", type: 'info'})} />}
-          {activeView === 'admin' && <AdminDashboard eliteRequests={pendingEliteRequests} onApproveElite={(id) => {
-            setPendingEliteRequests(prev => prev.filter(r => r.id !== id));
-            setToast({ message: "Node Promoted to Elite", type: 'premium' });
-          }} />}
-          {activeView === 'manual' && <UserManual />}
-          {activeView === 'disclaimer' && <DisclaimerPage />}
-          {activeView === 'privacy' && <PrivacyPolicy />}
+          {activeView === 'predictions' && (
+             <div className="max-w-4xl mx-auto py-8">
+                <h2 className="text-3xl font-orbitron font-bold mb-8 flex items-center gap-3"><Cpu className="text-purple-500" /> Full Neural Prediction Stack</h2>
+                <Predictor isPremium={currentUser?.isPremium} lang={lang} heatmapData={heatmapData} />
+             </div>
+          )}
+          {activeView === 'widgets' && <div className="max-w-xl mx-auto py-12"><WidgetGenerator /></div>}
+          {activeView === 'premium' && <PremiumView isPremium={currentUser?.isPremium || false} currentUser={currentUser} pendingRequests={pendingEliteRequests} onRequestUpgrade={handleRequestUpgrade} />}
           {activeView === 'about' && <AboutUs />}
           {activeView === 'contact' && <ContactUs />}
-          {activeView === 'sitemap' && <Sitemap onNavigate={navigateTo} />}
+          {activeView === 'privacy' && <PrivacyPolicy />}
           {activeView === 'terms' && <TermsConditions />}
-          {activeView === 'widgets' && <WidgetGenerator />}
+          {activeView === 'disclaimer' && <DisclaimerPage />}
+          {activeView === 'sitemap' && <Sitemap onNavigate={navigateTo} />}
+          {activeView === 'admin' && <AdminDashboard eliteRequests={pendingEliteRequests} onApproveElite={handleApproveElite} />}
         </div>
-        
-        {/* AdSense Ready Global Footer */}
-        <Footer />
       </main>
 
-      {showScrollTop && (
-        <button 
-          onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-24 w-12 h-12 glass border border-white/10 rounded-full flex items-center justify-center text-blue-500 shadow-2xl animate-in fade-in slide-in-from-bottom-4 transition-all hover:bg-blue-600 hover:text-white z-[140]"
-        >
-          <ArrowUp size={20} />
-        </button>
-      )}
-
-      {selectedResult && (
-        <ProviderResultsModal 
-          result={selectedResult} 
-          onClose={() => setSelectedResult(null)} 
-          lang={lang} 
-          isLoggedIn={!!currentUser} 
-          onGuestAttempt={handleGuestAttempt}
-          isFavorite={isResultFavorite(selectedResult)}
-          onToggleFavorite={() => toggleFavorite(selectedResult)}
-          onShare={(e) => { e.stopPropagation(); setSharingResult(selectedResult); }}
-        />
-      )}
-
-      {sharingResult && <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />}
       <LoginModal 
         isOpen={showLogin} onClose={() => setShowLogin(false)} lang={lang} 
-        onLogin={(u) => { setCurrentUser(u); setShowLogin(false); }} onCreateId={() => {}} 
+        onLogin={(u) => { setCurrentUser(u); setShowLogin(false); fetchUserData(u.id); }} onCreateId={() => {}} 
       />
       <AIChatAssistant />
     </div>

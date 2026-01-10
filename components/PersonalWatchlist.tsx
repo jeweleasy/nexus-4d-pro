@@ -17,19 +17,21 @@ import {
   ExternalLink,
   Zap,
   X,
-  // Added ShieldCheck to the imports to fix the reference error on line 154
-  ShieldCheck
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import { LotteryProvider, LotteryResult } from '../types';
 import { ShadowButton } from './ShadowButton';
 import { MOCK_RESULTS } from '../constants';
+import { supabase } from '../services/supabase';
 
 interface WatchedNumber {
   id: string;
   number: string;
   provider: LotteryProvider | 'All';
   timestamp: number;
-  addedAt: string; // "YYYY-MM-DD HH:MM:SS"
+  addedAt: string;
+  note?: string;
 }
 
 interface PersonalWatchlistProps {
@@ -39,54 +41,98 @@ interface PersonalWatchlistProps {
 }
 
 export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn, onGuestAttempt, onMatch }) => {
-  const [watchedNumbers, setWatchedNumbers] = useState<WatchedNumber[]>(() => {
-    try {
-      const saved = localStorage.getItem('nexus_watchlist');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
+  const [watchedNumbers, setWatchedNumbers] = useState<WatchedNumber[]>([]);
+  const [loading, setLoading] = useState(false);
   const [inputNum, setInputNum] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<LotteryProvider | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedHistory, setSelectedHistory] = useState<{ number: string; result: LotteryResult | null; addedAt: string } | null>(null);
 
-  const saveWatchlist = (list: WatchedNumber[]) => {
-    setWatchedNumbers(list);
-    localStorage.setItem('nexus_watchlist', JSON.stringify(list));
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNodes();
+    } else {
+      setWatchedNumbers([]);
+    }
+  }, [isLoggedIn]);
+
+  const fetchNodes = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('personal_nodes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setWatchedNumbers(data.map(d => ({
+          id: d.id,
+          number: d.number,
+          provider: d.provider as any,
+          timestamp: new Date(d.created_at).getTime(),
+          addedAt: new Date(d.created_at).toLocaleString(),
+          note: d.note
+        })));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!isLoggedIn) {
       onGuestAttempt();
       return;
     }
     if (inputNum.length !== 4) return;
 
-    const now = new Date();
-    const formattedDate = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const newEntry: WatchedNumber = {
-      id: Math.random().toString(36).substring(2, 9),
-      number: inputNum,
-      provider: selectedProvider,
-      timestamp: Date.now(),
-      addedAt: formattedDate
-    };
+      const { data, error } = await supabase
+        .from('personal_nodes')
+        .insert({
+          user_id: user.id,
+          number: inputNum,
+          provider: selectedProvider,
+          note: ''
+        })
+        .select()
+        .single();
 
-    const newList = [newEntry, ...watchedNumbers];
-    saveWatchlist(newList);
-    setInputNum('');
-    checkMatches(newEntry);
+      if (data) {
+        const newEntry: WatchedNumber = {
+          id: data.id,
+          number: data.number,
+          provider: data.provider as any,
+          timestamp: new Date(data.created_at).getTime(),
+          addedAt: new Date(data.created_at).toLocaleString()
+        };
+        setWatchedNumbers([newEntry, ...watchedNumbers]);
+        setInputNum('');
+        checkMatches(newEntry);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const removeNumber = (id: string) => {
-    const newList = watchedNumbers.filter(n => n.id !== id);
-    saveWatchlist(newList);
-    if (selectedHistory && watchedNumbers.find(n => n.id === id)?.number === selectedHistory.number) {
-        setSelectedHistory(null);
+  const removeNumber = async (id: string) => {
+    try {
+      await supabase.from('personal_nodes').delete().eq('id', id);
+      setWatchedNumbers(prev => prev.filter(n => n.id !== id));
+      if (selectedHistory && watchedNumbers.find(n => n.id === id)?.number === selectedHistory.number) {
+          setSelectedHistory(null);
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -113,16 +159,6 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
     return watchedNumbers.filter(n => n.number.includes(searchQuery));
   }, [watchedNumbers, searchQuery]);
 
-  // When searching, if there's exactly one match, show it in the side box automatically
-  useEffect(() => {
-    if (searchQuery.length === 4) {
-      const found = watchedNumbers.find(n => n.number === searchQuery);
-      if (found) {
-        handleInspectNumber(found);
-      }
-    }
-  }, [searchQuery]);
-
   const handleInspectNumber = (entry: WatchedNumber) => {
     const match = MOCK_RESULTS.find(res => {
       const providerMatch = entry.provider === 'All' || res.provider === entry.provider;
@@ -138,28 +174,25 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
     });
   };
 
-  // Requirement: "when user login then show personal nodes, otherwise dont show"
   if (!isLoggedIn) return null;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 animate-in fade-in duration-500">
-      {/* Main Watchlist Control */}
       <div className="flex-1 glass rounded-[2rem] p-6 border border-white/10 space-y-6 relative overflow-hidden group shadow-2xl">
         <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 blur-2xl rounded-full"></div>
         
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-orbitron font-bold flex items-center gap-3">
             <Target className="text-blue-500" size={20} />
-            Personal Nodes
+            Cloud Node Tracker
           </h3>
           <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 rounded-lg border border-green-500/20">
             <ShieldCheck size={12} className="text-green-500" />
-            <span className="text-[8px] font-black text-green-500 uppercase tracking-tighter">Secure Vault</span>
+            <span className="text-[8px] font-black text-green-500 uppercase tracking-tighter">Live Relay</span>
           </div>
         </div>
 
         <div className="space-y-4">
-          {/* Add Section */}
           <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
             <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest px-1">Commit New Entry</p>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -195,11 +228,10 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
               disabled={inputNum.length !== 4}
               className="w-full py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
             >
-              <Plus size={14} /> Register Signature
+              <Plus size={14} /> Register Node Signature
             </ShadowButton>
           </div>
 
-          {/* Search Section */}
           <div className="relative">
             <input 
               type="text" 
@@ -209,16 +241,15 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
               className="w-full bg-black/60 border border-blue-500/20 rounded-xl px-12 py-3.5 text-[10px] font-black uppercase tracking-[0.2em] focus:outline-none focus:border-blue-500/50 transition-all text-blue-400 placeholder:text-blue-900 shadow-[inset_0_0_15px_rgba(59,130,246,0.1)]"
             />
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-900" />
-            {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white">
-                    <X size={16} />
-                </button>
-            )}
           </div>
 
-          {/* List Section */}
           <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-            {filteredWatchlist.length > 0 ? (
+            {loading ? (
+               <div className="py-20 flex flex-col items-center gap-3">
+                  <Loader2 size={32} className="text-blue-500 animate-spin" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Retrieving Cloud Ledger...</p>
+               </div>
+            ) : filteredWatchlist.length > 0 ? (
               filteredWatchlist.map((entry) => (
                 <div 
                   key={entry.id} 
@@ -237,26 +268,19 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {MOCK_RESULTS.some(r => r.first === entry.number || r.second === entry.number || r.third === entry.number) && (
-                        <div className="p-1 bg-amber-500/10 rounded-lg text-amber-500" title="Historical Win Found">
-                            <Trophy size={14} />
-                        </div>
-                    )}
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); removeNumber(entry.id); }}
-                        className="p-2 text-slate-700 hover:text-red-500 transition-colors md:opacity-0 group-hover/item:opacity-100"
-                    >
-                        <Trash2 size={14} />
-                    </button>
-                  </div>
+                  <button 
+                      onClick={(e) => { e.stopPropagation(); removeNumber(entry.id); }}
+                      className="p-2 text-slate-700 hover:text-red-500 transition-colors md:opacity-0 group-hover/item:opacity-100"
+                  >
+                      <Trash2 size={14} />
+                  </button>
                 </div>
               ))
             ) : (
               <div className="py-20 text-center space-y-3 opacity-20 group-hover:opacity-40 transition-opacity">
                  <Bell size={48} className="mx-auto text-slate-600" />
                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-                   {searchQuery ? "No node matching criteria" : "Neural Vault Empty"}
+                   Neural Vault Empty
                  </p>
               </div>
             )}
@@ -264,9 +288,8 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
         </div>
       </div>
 
-      {/* Requirement: "side box winning number at the same time with personal savings number, date & operator" */}
       {selectedHistory && (
-        <div className="w-full lg:w-80 glass rounded-[2rem] p-6 border border-amber-500/20 bg-amber-500/[0.03] animate-in slide-in-from-right-4 duration-500 relative flex flex-col h-fit lg:sticky lg:top-24">
+        <div className="w-full lg:w-80 glass rounded-[2rem] p-6 border border-amber-500/20 bg-amber-500/[0.03] animate-in slide-in-from-right-4 duration-500 relative flex flex-col h-fit lg:sticky lg:top-24 shadow-2xl">
           <button 
             onClick={() => setSelectedHistory(null)}
             className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors"
@@ -280,31 +303,16 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
                 <Zap size={20} className="text-black" />
               </div>
               <div>
-                <h4 className="text-sm font-orbitron font-bold text-white uppercase tracking-wider">Node Intelligence</h4>
-                <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Syncing Archives...</p>
+                <h4 className="text-sm font-orbitron font-bold text-white uppercase tracking-wider">Analysis Hub</h4>
+                <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest animate-pulse">Scanning Waves...</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-               <div className="p-4 rounded-2xl bg-black/60 border border-white/5 group-hover:border-amber-500/30 transition-all">
-                  <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-[0.2em] flex items-center gap-1">
-                    <Target size={10} className="text-amber-500" /> Personal Savings Node
-                  </p>
-                  <p className="text-4xl font-orbitron font-black text-white tracking-[0.3em]">{selectedHistory.number}</p>
-               </div>
-               
-               <div className="p-4 rounded-2xl bg-black/60 border border-white/5 space-y-3">
-                  <div>
-                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1 tracking-widest flex items-center gap-1"><Calendar size={9}/> Committed Date/Time</p>
-                    <p className="text-[10px] font-bold text-slate-200 tabular-nums">{selectedHistory.addedAt}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1 tracking-widest flex items-center gap-1"><Filter size={9}/> Scope</p>
-                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
-                        {watchedNumbers.find(n => n.number === selectedHistory.number)?.provider || 'Global'}
-                    </p>
-                  </div>
-               </div>
+            <div className="p-4 rounded-2xl bg-black/60 border border-white/5">
+                <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-[0.2em] flex items-center gap-1">
+                  <Target size={10} className="text-amber-500" /> Persistent ID
+                </p>
+                <p className="text-4xl font-orbitron font-black text-white tracking-[0.3em]">{selectedHistory.number}</p>
             </div>
 
             <div className="border-t border-white/10 pt-6">
@@ -312,30 +320,21 @@ export const PersonalWatchlist: React.FC<PersonalWatchlistProps> = ({ isLoggedIn
                 <div className="space-y-4">
                    <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black text-green-500 uppercase flex items-center gap-2">
-                        <CheckCircle2 size={12} /> MATCH FOUND
+                        <CheckCircle2 size={12} /> CONVERGENCE FOUND
                       </span>
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tabular-nums">Sync: {selectedHistory.result.drawDate}</span>
                    </div>
-                   <div className="p-5 rounded-[2rem] bg-gradient-to-br from-green-500/10 to-transparent border border-green-500/30 text-center space-y-2 group/win">
+                   <div className="p-5 rounded-[2rem] bg-gradient-to-br from-green-500/10 to-transparent border border-green-500/30 text-center space-y-2">
                       <p className="text-[11px] font-black text-green-400 uppercase tracking-[0.3em]">{selectedHistory.result.provider}</p>
-                      <p className="text-3xl font-orbitron font-black text-white glow-gold group-hover/win:scale-110 transition-transform">#{selectedHistory.result.drawNumber}</p>
-                      <div className="pt-2">
-                         <span className="px-3 py-1 bg-green-500 text-black text-[8px] font-black uppercase rounded-lg shadow-lg">Verified Victory</span>
-                      </div>
+                      <p className="text-3xl font-orbitron font-black text-white">{selectedHistory.result.first}</p>
                    </div>
                 </div>
               ) : (
                 <div className="py-8 text-center space-y-3 opacity-60 grayscale">
                    <ShieldAlert size={32} className="mx-auto text-slate-600" />
-                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Awaiting Convergence</p>
-                   <p className="text-[8px] text-slate-700 uppercase italic">No historical matches in current cycle</p>
+                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Awaiting Pattern Strike</p>
                 </div>
               )}
             </div>
-
-            <ShadowButton variant="secondary" className="w-full py-3 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-white/10">
-                <ExternalLink size={12} /> VIEW DEEP LEDGER
-            </ShadowButton>
           </div>
         </div>
       )}
