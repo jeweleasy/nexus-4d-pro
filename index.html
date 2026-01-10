@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -33,6 +32,15 @@
               sans: ['Inter', 'sans-serif'],
               orbitron: ['Orbitron', 'sans-serif'],
             },
+            animation: {
+              'spin-slow': 'spin 8s linear infinite',
+              'pulse-border': 'pulse-border 2s infinite',
+              'heart-pop': 'heart-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              'prize-breathe': 'prize-breathe 3s infinite ease-in-out',
+              'radiant-glow': 'radiant-glow 2s infinite ease-in-out',
+              'scroll': 'scroll 40s linear infinite',
+              'shake': 'shake 0.4s ease-in-out',
+            }
           },
         },
       }
@@ -79,32 +87,27 @@
             50% { border-color: rgba(59, 130, 246, 1); }
             100% { border-color: rgba(59, 130, 246, 0.5); }
         }
-        .animate-pulse-border { animation: pulse-border 2s infinite; }
 
         @keyframes heart-pop {
             0% { transform: scale(1); }
             50% { transform: scale(1.4); }
             100% { transform: scale(1); }
         }
-        .animate-heart-pop { animation: heart-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
         @keyframes prize-breathe {
             0%, 100% { transform: scale(1); filter: brightness(1); }
             50% { transform: scale(1.02); filter: brightness(1.2); }
         }
-        .animate-prize-breathe { animation: prize-breathe 3s infinite ease-in-out; }
 
         @keyframes radiant-glow {
             0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.2); }
             50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.5); }
         }
-        .animate-radiant-glow { animation: radiant-glow 2s infinite ease-in-out; }
 
         @keyframes scroll {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
-        .animate-scroll { animation: scroll 40s linear infinite; }
 
         @keyframes scan-line {
             0% { transform: translateY(-100%); }
@@ -117,12 +120,24 @@
           50% { transform: translateX(8px); }
           75% { transform: translateX(-8px); }
         }
-        .animate-shake { animation: shake 0.4s ease-in-out; }
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-color); }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+
+        .nexus-line {
+          width: 4px;
+          height: 24px;
+          border-radius: 99px;
+        }
+        .nexus-line-blue { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+        .nexus-line-amber { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .nexus-line-purple { background: #8b5cf6; box-shadow: 0 0 10px #8b5cf6; }
     </style>
 <script type="importmap">
 {
@@ -140,5 +155,6 @@
 </head>
 <body>
     <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>

@@ -129,22 +129,18 @@ const App: React.FC = () => {
 
   const [lang, setLang] = useState<LangCode>(detectLanguage());
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState<LotteryResult | null>(null);
   const [sharingResult, setSharingResult] = useState<LotteryResult | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'premium' | 'error' } | null>(null);
-  const [showLangMenu, setShowLangMenu] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>([]);
-  
-  const [activeTab, setActiveTab] = useState<LotteryProvider | 'All'>('All');
+  const [activeProviderFilter, setActiveProviderFilter] = useState<LotteryProvider | 'All'>('All');
   
   const mainRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedDate, setSelectedDate] = useState(todayStr);
-
   const [favorites, setFavorites] = useState<LotteryResult[]>([]);
 
   const [heatmapData, setHeatmapData] = useState<FrequencyNode[]>(() => {
@@ -163,7 +159,6 @@ const App: React.FC = () => {
 
   const t = LANGUAGES[lang] || LANGUAGES.EN;
 
-  // Sync favorites from Supabase cloud ledger
   const fetchUserData = async (userId: string) => {
     try {
       const { data: savedData } = await supabase
@@ -321,27 +316,24 @@ const App: React.FC = () => {
   const handleApproveElite = (id: string) => {
     const req = pendingEliteRequests.find(r => r.id === id);
     if (!req) return;
-    
-    // Simulate user becoming premium
     if (currentUser && currentUser.id === req.userId) {
        setCurrentUser({ ...currentUser, isPremium: true });
     }
-    
     setPendingEliteRequests(prev => prev.filter(r => r.id !== id));
     setToast({ message: "Node Upgraded to Elite Tier", type: 'success' });
   };
 
   const displayResults = useMemo(() => {
-    const providerResults = activeTab === 'All' 
+    const providerResults = activeProviderFilter === 'All' 
       ? MOCK_RESULTS 
-      : MOCK_RESULTS.filter(res => res.provider === activeTab);
+      : MOCK_RESULTS.filter(res => res.provider === activeProviderFilter);
 
     const dateResults = providerResults.filter(res => res.drawDate === selectedDate);
     if (dateResults.length > 0) return { results: dateResults, label: t.common.officialResults, date: selectedDate };
     
     const latestAvailableDate = [...providerResults].sort((a,b) => b.timestamp - a.timestamp)[0]?.drawDate || todayStr;
     return { results: providerResults.filter(r => r.drawDate === latestAvailableDate), label: t.common.latestResults, date: latestAvailableDate };
-  }, [selectedDate, t, activeTab]);
+  }, [selectedDate, t, activeProviderFilter]);
 
   if (isHandshaking) {
     return (
@@ -352,7 +344,7 @@ const App: React.FC = () => {
          </div>
          <div className="flex flex-col items-center space-y-2">
             <Loader2 className="text-blue-500 animate-spin" size={24} />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Initializing Neural Handshake...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Preparing Deployment Node...</p>
          </div>
       </div>
     );
@@ -417,9 +409,9 @@ const App: React.FC = () => {
               <Menu size={26} />
             </button>
             <VoiceSearch onCommand={(i, p) => {
-               if (i === 'CHECK_RESULT' && p) setActiveTab(p as any);
+               if (i === 'CHECK_RESULT' && p) setActiveProviderFilter(p as any);
                if (i === 'VIEW_STATS') navigateTo('stats');
-               if (i === 'GENERATE_LUCKY') navigateTo('dashboard'); // Lucky engine is on dash
+               if (i === 'GENERATE_LUCKY') navigateTo('dashboard');
                if (i === 'OPEN_COMMUNITY') navigateTo('community');
                setToast({ message: `AI Intent: ${i}`, type: 'info' });
             }} />
@@ -455,7 +447,7 @@ const App: React.FC = () => {
           {activeView === 'dashboard' && (
             <>
               <JackpotTracker />
-              <LogoTicker onSelectProvider={setActiveTab as any} />
+              <LogoTicker onSelectProvider={setActiveProviderFilter as any} />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
                   {displayResults.results.map((res, i) => (
@@ -540,6 +532,22 @@ const App: React.FC = () => {
         onLogin={(u) => { setCurrentUser(u); setShowLogin(false); fetchUserData(u.id); }} onCreateId={() => {}} 
       />
       <AIChatAssistant />
+      
+      {selectedResult && (
+        <ProviderResultsModal 
+          result={selectedResult} 
+          onClose={() => setSelectedResult(null)} 
+          lang={lang} 
+          isLoggedIn={!!currentUser}
+          isFavorite={isResultFavorite(selectedResult)}
+          onToggleFavorite={() => toggleFavorite(selectedResult)}
+          onShare={() => setSharingResult(selectedResult)}
+        />
+      )}
+      
+      {sharingResult && (
+        <ShareModal result={sharingResult} onClose={() => setSharingResult(null)} />
+      )}
     </div>
   );
 };
