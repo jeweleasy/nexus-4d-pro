@@ -58,7 +58,9 @@ import {
   Loader2,
   ArrowUp,
   Youtube,
-  Github
+  Github,
+  Video,
+  Mic
 } from 'lucide-react';
 import { MOCK_RESULTS, LANGUAGES, HOT_NUMBERS } from './constants';
 import { ResultCard } from './components/ResultCard';
@@ -90,6 +92,8 @@ import { LoginModal } from './components/LoginModal';
 import { HistoryArchive } from './components/HistoryArchive';
 import { PersonalWatchlist } from './components/PersonalWatchlist';
 import { SellerArchive } from './components/SellerArchive';
+import { LiveConsultant } from './components/LiveConsultant';
+import { DrawSimulator } from './components/DrawSimulator';
 import { LotteryProvider, LotteryResult, User, EliteRequest } from './types';
 import { supabase } from './services/supabase';
 import { 
@@ -138,6 +142,10 @@ const App: React.FC = () => {
   const [pendingEliteRequests, setPendingEliteRequests] = useState<EliteRequest[]>([]);
   const [activeProviderFilter, setActiveProviderFilter] = useState<LotteryProvider | 'All'>('All');
   
+  const [showLiveConsultant, setShowLiveConsultant] = useState(false);
+  const [showDrawSimulator, setShowDrawSimulator] = useState(false);
+  const [showArMode, setShowArMode] = useState(false);
+
   const mainRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -299,30 +307,6 @@ const App: React.FC = () => {
   const isResultFavorite = (result: LotteryResult) => 
     favorites.some(f => f.provider === result.provider && f.drawDate === result.drawDate);
 
-  const handleRequestUpgrade = () => {
-    if (!currentUser) return;
-    const request: EliteRequest = {
-      id: `req-${Date.now()}`,
-      userId: currentUser.id,
-      nexusId: currentUser.nexusId,
-      email: currentUser.email,
-      timestamp: Date.now(),
-      status: 'pending'
-    };
-    setPendingEliteRequests(prev => [...prev, request]);
-    setToast({ message: "Elite Escalation Dispatched", type: 'premium' });
-  };
-
-  const handleApproveElite = (id: string) => {
-    const req = pendingEliteRequests.find(r => r.id === id);
-    if (!req) return;
-    if (currentUser && currentUser.id === req.userId) {
-       setCurrentUser({ ...currentUser, isPremium: true });
-    }
-    setPendingEliteRequests(prev => prev.filter(r => r.id !== id));
-    setToast({ message: "Node Upgraded to Elite Tier", type: 'success' });
-  };
-
   const displayResults = useMemo(() => {
     const providerResults = activeProviderFilter === 'All' 
       ? MOCK_RESULTS 
@@ -395,6 +379,19 @@ const App: React.FC = () => {
           <NavItem icon={Cpu} label={t.nav.predictions} id="predictions" badge={currentUser?.isPremium ? "PRO" : "LITE"} />
           <NavItem icon={Newspaper} label={t.nav.news} id="news" />
           <NavItem icon={Code} label={t.nav.widgets} id="widgets" />
+          
+          <div className="my-4 border-t border-slate-200 dark:border-white/5 pt-4">
+             <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-4 mb-2">Neural Ops</p>
+             <button onClick={() => setShowLiveConsultant(true)} className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left group hover:bg-blue-600/10 text-slate-400 hover:text-blue-400">
+                <Mic size={18} />
+                <span className="font-semibold text-sm">AI Live Strategist</span>
+             </button>
+             <button onClick={() => setShowDrawSimulator(true)} className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-left group hover:bg-purple-600/10 text-slate-400 hover:text-purple-400">
+                <Video size={18} />
+                <span className="font-semibold text-sm">Draw Simulator</span>
+             </button>
+          </div>
+
           <div className="my-4 border-t border-slate-200 dark:border-white/5"></div>
           <NavItem icon={CreditCard} label={t.nav.premium} id="premium" />
           <NavItem icon={ShieldCheck} label={t.nav.admin} id="admin" />
@@ -413,11 +410,15 @@ const App: React.FC = () => {
                if (i === 'VIEW_STATS') navigateTo('stats');
                if (i === 'GENERATE_LUCKY') navigateTo('dashboard');
                if (i === 'OPEN_COMMUNITY') navigateTo('community');
+               if (i === 'OPEN_AR') setShowArMode(true);
                setToast({ message: `AI Intent: ${i}`, type: 'info' });
             }} />
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
+             <button onClick={() => setShowArMode(true)} className="p-3 rounded-xl bg-white/5 border border-white/10 text-slate-500 hover:text-blue-500 transition-all hover:scale-110 active:scale-95">
+                <Camera size={20} />
+             </button>
             {currentUser ? (
               <div className="relative">
                 <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 sm:gap-3 glass p-1.5 rounded-2xl border border-white/10 hover:border-blue-500/50 transition-all active:scale-95">
@@ -457,6 +458,7 @@ const App: React.FC = () => {
                         onGuestAttempt={handleGuestAttempt} 
                         isFavorite={isResultFavorite(res)}
                         onToggleFavorite={(e) => { e.stopPropagation(); toggleFavorite(res); }}
+                        onShare={(e) => { e.stopPropagation(); setSharingResult(res); }}
                       />
                     </div>
                   ))}
@@ -481,9 +483,20 @@ const App: React.FC = () => {
                   </div>
                   <DigitHeatmap lang={lang} data={heatmapData} onSync={setHeatmapData} />
                </div>
+               <GamingTools />
             </div>
           )}
-          {activeView === 'archive' && <HistoryArchive lang={lang} isLoggedIn={!!currentUser} onGuestAttempt={handleGuestAttempt} onMatch={() => {}} />}
+          {activeView === 'archive' && (
+            <HistoryArchive 
+              lang={lang} 
+              isLoggedIn={!!currentUser} 
+              onGuestAttempt={handleGuestAttempt} 
+              onMatch={() => {}}
+              onToggleFavorite={toggleFavorite}
+              onShare={setSharingResult}
+              isFavorite={isResultFavorite}
+            />
+          )}
           {activeView === 'favorites' && (
              <div className="space-y-8">
                 <h2 className="text-3xl font-orbitron font-bold flex items-center gap-3"><Heart className="text-red-500" /> Cloud Saved Nodes</h2>
@@ -492,7 +505,8 @@ const App: React.FC = () => {
                     {favorites.map((res, i) => (
                        <ResultCard 
                         key={i} result={res} lang={lang} isLoggedIn={true} 
-                        isFavorite={true} onToggleFavorite={() => toggleFavorite(res)} 
+                        isFavorite={true} onToggleFavorite={() => toggleFavorite(res)}
+                        onShare={(e) => { e.stopPropagation(); setSharingResult(res); }} 
                        />
                     ))}
                   </div>
@@ -516,14 +530,14 @@ const App: React.FC = () => {
              </div>
           )}
           {activeView === 'widgets' && <div className="max-w-xl mx-auto py-12"><WidgetGenerator /></div>}
-          {activeView === 'premium' && <PremiumView isPremium={currentUser?.isPremium || false} currentUser={currentUser} pendingRequests={pendingEliteRequests} onRequestUpgrade={handleRequestUpgrade} />}
+          {activeView === 'premium' && <PremiumView isPremium={currentUser?.isPremium || false} currentUser={currentUser} pendingRequests={pendingEliteRequests} onRequestUpgrade={navigateTo as any} />}
           {activeView === 'about' && <AboutUs />}
           {activeView === 'contact' && <ContactUs />}
           {activeView === 'privacy' && <PrivacyPolicy />}
           {activeView === 'terms' && <TermsConditions />}
           {activeView === 'disclaimer' && <DisclaimerPage />}
           {activeView === 'sitemap' && <Sitemap onNavigate={navigateTo} />}
-          {activeView === 'admin' && <AdminDashboard eliteRequests={pendingEliteRequests} onApproveElite={handleApproveElite} />}
+          {activeView === 'admin' && <AdminDashboard eliteRequests={pendingEliteRequests} onApproveElite={() => {}} />}
         </div>
       </main>
 
@@ -533,6 +547,10 @@ const App: React.FC = () => {
       />
       <AIChatAssistant />
       
+      {showLiveConsultant && <LiveConsultant onClose={() => setShowLiveConsultant(false)} />}
+      {showDrawSimulator && <DrawSimulator onClose={() => setShowDrawSimulator(false)} />}
+      {showArMode && <ArExperience onClose={() => setShowArMode(false)} />}
+
       {selectedResult && (
         <ProviderResultsModal 
           result={selectedResult} 

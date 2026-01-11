@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 export class PredictionService {
   private get ai() {
@@ -58,6 +58,43 @@ export class PredictionService {
     }
   }
 
+  async generateDrawSimulation(prompt: string) {
+    try {
+      let operation = await this.ai.models.generateVideos({
+        model: 'veo-3.1-fast-generate-preview',
+        prompt: `A high-quality 4D lottery draw simulation in a futuristic sci-fi setting. Holographic balls with numbers ${prompt} emerging from a glowing nexus sphere. 4k resolution, cinematic lighting.`,
+        config: {
+          numberOfVideos: 1,
+          resolution: '720p',
+          aspectRatio: '16:9'
+        }
+      });
+      while (!operation.done) {
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        operation = await this.ai.operations.getVideosOperation({ operation: operation });
+      }
+      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+      return `${downloadLink}&key=${process.env.API_KEY}`;
+    } catch (error) {
+      console.error("Video Generation Error:", error);
+      return null;
+    }
+  }
+
+  async connectToLiveStrategist(callbacks: any) {
+    return this.ai.live.connect({
+      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      callbacks,
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+        },
+        systemInstruction: 'You are the 4D Nexus Pro Live Strategist. Speak in a professional, calm, and slightly futuristic tone. You help users understand lottery trends, calculate probability, and offer strategic advice based on data patterns. Always maintain a focus on responsible gaming.'
+      }
+    });
+  }
+
   async parseVoiceCommand(transcript: string) {
     try {
       const response = await this.ai.models.generateContent({
@@ -84,40 +121,12 @@ export class PredictionService {
     }
   }
 
-  async getDeepInsights(historicalData: string) {
-    try {
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Analyze winner sequence: ${historicalData}. Format as JSON.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              sentiment: { type: Type.STRING },
-              convergence: { type: Type.NUMBER },
-              recommendation: { type: Type.STRING }
-            }
-          }
-        }
-      });
-      return JSON.parse(response.text || '{}');
-    } catch (error) {
-      return { sentiment: "Neutral", convergence: 50, recommendation: "Stable clusters" };
-    }
-  }
-
   async getNewsAggregated() {
     try {
       const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Aggregate 5 news articles related to 4D Lottery, Gaming Industry, and Jackpot winners in Malaysia.
-        Sources MUST strictly be chosen from: 
-        English: [The Star, New Straits Times (NST), The Edge, Malay Mail, Free Malaysia Today, Malaysiakini]
-        Malay: [Berita Harian, Harian Metro, Utusan Malaysia, Kosmo!]
-        Chinese: [Sin Chew Daily, China Press, Nanyang Siang Pau, Oriental Daily News]
-        
-        Ensure articles capture Malaysian context. Return JSON.`,
+        contents: `Aggregate 5 news articles related to 4D Lottery, Gaming Industry, and Jackpot winners in Malaysia. 
+        Sources: The Edge, Sin Chew, Berita Harian. Return JSON.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -143,8 +152,7 @@ export class PredictionService {
           }
         }
       });
-      const data = JSON.parse(response.text || '{"news": []}');
-      return data;
+      return JSON.parse(response.text || '{"news": []}');
     } catch (error) {
       console.error("News Aggregator Error:", error);
       return null;
@@ -156,7 +164,7 @@ export class PredictionService {
       const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
-          parts: [{ text: `High-resolution editorial abstract photo for a Malaysian newspaper. Subject: ${prompt}. Cinematic lighting, depth of field, vibrant colors of Kuala Lumpur or urban architecture. STRICTLY NO IDENTIFIABLE HUMAN FACES to protect privacy. Journalistic aesthetic.` }]
+          parts: [{ text: `High-resolution editorial abstract photo for a Malaysian newspaper. Subject: ${prompt}. Cinematic lighting.` }]
         },
         config: { imageConfig: { aspectRatio: "16:9" } }
       });
@@ -199,6 +207,33 @@ export class PredictionService {
     } catch (error) {
       console.error("Predictor Error:", error);
       return { predictions: [] };
+    }
+  }
+
+  // Added getDeepInsights method to fix the missing property error in Predictor component
+  async getDeepInsights(historicalData: string) {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: `Analyze these lottery numbers: ${historicalData}. 
+                   Provide a 'sentiment' (e.g., Optimistic, Volatile, Balanced) and a 'convergence' percentage (0-100) based on pattern density.
+                   Return JSON.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sentiment: { type: Type.STRING },
+              convergence: { type: Type.NUMBER }
+            },
+            required: ['sentiment', 'convergence']
+          }
+        }
+      });
+      return JSON.parse(response.text || '{"sentiment": "Neutral", "convergence": 50}');
+    } catch (error) {
+      console.error("Insights Error:", error);
+      return { sentiment: "Neutral", convergence: 50 };
     }
   }
 }

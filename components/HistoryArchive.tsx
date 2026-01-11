@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
@@ -40,6 +41,9 @@ interface HistoryArchiveProps {
   isLoggedIn?: boolean;
   onGuestAttempt?: () => void;
   onMatch?: (result: LotteryResult, matchedNum: string) => void;
+  onToggleFavorite?: (result: LotteryResult) => void;
+  onShare?: (result: LotteryResult) => void;
+  isFavorite?: (result: LotteryResult) => boolean;
 }
 
 interface WatchedNumber {
@@ -50,7 +54,15 @@ interface WatchedNumber {
   note?: string;
 }
 
-export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn = false, onGuestAttempt, onMatch }) => {
+export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ 
+  lang, 
+  isLoggedIn = false, 
+  onGuestAttempt, 
+  onMatch,
+  onToggleFavorite,
+  onShare,
+  isFavorite
+}) => {
   const [searchNumber, setSearchNumber] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<LotteryProvider | 'All'>('All');
   const [startDate, setStartDate] = useState('');
@@ -365,6 +377,9 @@ export const HistoryArchive: React.FC<HistoryArchiveProps> = ({ lang, isLoggedIn
                   isLoggedIn={isLoggedIn} 
                   onGuestAttempt={onGuestAttempt} 
                   highlightQuery={searchNumber} 
+                  isFavorite={isFavorite?.(res)}
+                  onToggleFavorite={() => onToggleFavorite?.(res)}
+                  onShare={(e) => { e.stopPropagation(); onShare?.(res); }}
                 />
               )) : (
                 <div className="glass rounded-[3rem] p-32 text-center border border-dashed border-white/10 space-y-6">

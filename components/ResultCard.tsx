@@ -69,7 +69,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
     setTimeout(() => setJustCopiedAll(false), 2000);
   };
 
-  const handleShareClick = (e: React.MouseEvent) => {
+  const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLoggedIn && onGuestAttempt) {
       setShake(true);
@@ -77,10 +77,27 @@ export const ResultCard: React.FC<ResultCardProps> = ({
       onGuestAttempt();
       return;
     }
+
     if (onShare) {
       onShare(e);
       setJustShared(true);
       setTimeout(() => setJustShared(false), 2000);
+    } else if (navigator.share) {
+      try {
+        const text = `${result.provider} Results (${result.drawDate})\n1st: ${result.first}\n2nd: ${result.second}\n3rd: ${result.third}\nView more at 4D Nexus Pro`;
+        await navigator.share({
+          title: `4D Result: ${result.provider}`,
+          text: text,
+          url: window.location.href,
+        });
+        setJustShared(true);
+        setTimeout(() => setJustShared(false), 2000);
+      } catch (err) {
+        console.debug('Web Share cancelled or failed');
+      }
+    } else {
+      // Manual copy fallback if no sharing provided and no Web Share API
+      handleCopyAll(e);
     }
   };
 
@@ -176,7 +193,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
         </button>
         <button 
           onClick={handleShareClick} 
-          className={`p-2.5 rounded-2xl transition-all border active:scale-90 shadow-sm ${justShared ? 'text-green-500 bg-green-500/15 border-green-500/30' : 'text-slate-500 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-green-500/30'}`}
+          className={`p-2.5 rounded-2xl transition-all border active:scale-90 shadow-sm ${justShared ? 'text-green-500 bg-green-500/15 border-green-500/30' : 'text-slate-500 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-blue-500/30'}`}
         >
           {justShared ? <Check size={18} /> : <Share2 size={18} />}
         </button>
